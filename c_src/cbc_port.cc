@@ -13,6 +13,7 @@ typedef unsigned char byte;
 static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool g_bNewBestSolution = false;
 double g_dBestSolution;
+double g_dOurBestSolution = 1e50;
 
 int read_exact(byte *buf, int len);
 int write_exact(byte *buf, int len);
@@ -43,7 +44,7 @@ double readDouble(byte *buf)
 void updateBestSolution(CbcModel *model)
 {
     pthread_mutex_lock(&g_mutex);
-    if (g_bNewBestSolution)
+    if (g_bNewBestSolution && g_dBestSolution < g_dOurBestSolution)
     {
         printf(">>> updateBestSolution(): setting best solution: %lf\n", g_dBestSolution);
         model->setBestSolution(NULL, 0, g_dBestSolution);
@@ -142,6 +143,10 @@ public:
     bool newSolution(CbcModel *model, double objectiveAtContinuous,
         int numberInfeasibilitiesAtContinuous)
     {
+	pthread_mutex_lock(&g_mutex);
+	g_dOurBestSolution = model->getObjValue();
+	pthread_mutex_unlock(&g_mutex);
+
         sendBestSolutionValue(model->getObjValue());
         updateBestSolution(model);
         return _cmp.newSolution(model, objectiveAtContinuous,
