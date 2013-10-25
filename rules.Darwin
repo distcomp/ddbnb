@@ -1,0 +1,2 @@
+BLAS = -lcoinlapack -lcoinblas
+LIBS = $(BLAS)
