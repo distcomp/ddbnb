@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><umlet_diagram><help_text>dcbc_master:~m|dcbc_solver:~s|cbc_port:~p
+
+s&lt;-p:s,p:best_val
+m&lt;-s:m,s:best_val
+9999-&gt;0:
+s&lt;-p:s,p:done
+m&lt;-s:m,s:done</help_text><element><type>com.umlet.element.base.SequenceDiagram</type><coordinates><x>20</x><y>10</y><w>470</w><h>270</h></coordinates><panel_attributes>dcbc_master:~m|dcbc_solver:~s|cbc_port:~p
+s&lt;-p:s,p:&lt;&lt;3, float&gt;&gt;
+m&lt;-s:m,s:best_val
+iframe{:Оповещает остальных
+m-&gt;s:s,m:update_best_val
+s-&gt;p:s,p:&lt;&lt;1, float&gt;&gt; 
+iframe}</panel_attributes><additional_attributes/></element></umlet_diagram>

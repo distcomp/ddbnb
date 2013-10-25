@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><umlet_diagram><help_text/><element><type>com.umlet.element.base.SequenceDiagram</type><coordinates><x>60</x><y>30</y><w>640</w><h>420</h></coordinates><panel_attributes>dcbc_master:~m|dcbc_slave:~sl|dcbc_solver:~s|cbc_port:~p
+
+m-&gt;&gt;&gt;sl:m,sl:start_solver()
+sl-&gt;&gt;&gt;s:sl,s,m:start_link()
+s-&gt;&gt;&gt;p:s,p,m,sl:open_port()
+s&lt;.p:s,p,m,sl:Port
+sl&lt;.s:sl,s,m:Pid
+m&lt;.sl:m,sl:Solver_pid
+s&lt;-p:s,p:best_val
+m&lt;-s:m,s:best_val
+9999-&gt;0:
+s&lt;-p:s,p:done
+m&lt;-s:m,s:done</panel_attributes><additional_attributes/></element></umlet_diagram>

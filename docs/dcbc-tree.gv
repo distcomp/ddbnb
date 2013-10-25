@@ -1,0 +1,44 @@
+digraph dcbc {
+    subgraph cluster_registry {
+        label="Registry node";
+        node [shape=doubleoctagon];
+        dcbc_sup_r [label="dcbc_sup"];
+
+        node [shape=rect];
+        dcbc_registry;
+        
+        dcbc_sup_r -> dcbc_registry;
+    }
+
+    subgraph cluster_slave {
+        label="Slave node";
+        node [shape=doubleoctagon];
+        dcbc_sup_s [label="dcbc_sup"];
+        dcbc_slave_sup;
+
+        node [shape=rect];
+        dcbc_slave;
+        dcbc_solver;
+        
+        dcbc_sup_s -> dcbc_slave;
+        dcbc_sup_s -> dcbc_slave_sup;
+        dcbc_slave_sup -> dcbc_solver [label="0..n"];
+    }
+
+    subgraph cluster_master {
+        label="Master node";
+        node [shape=doubleoctagon];
+        dcbc_sup_m [label="dcbc_sup"];
+
+        node [shape=rect];
+        dcbc_master;
+        
+        dcbc_sup_m -> dcbc_master;
+    }
+    
+    edge [style=dashed, constraint=false];
+    dcbc_master -> dcbc_solver;
+    dcbc_solver -> dcbc_master;
+    dcbc_registry -> dcbc_slave;
+    dcbc_slave -> dcbc_solver;    
+}

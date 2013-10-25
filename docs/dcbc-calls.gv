@@ -1,0 +1,26 @@
+digraph dcbc {
+    subgraph cluster_master {
+        label="Master node";
+        dcbc_master [shape=rect];
+    }
+    
+    subgraph cluster_slave {
+        label="Slave node";
+
+        node [shape=rect];
+        dcbc_slave;
+        dcbc_solver;
+        cbc_port;
+        
+        dcbc_slave -> dcbc_solver [label="start"];
+        dcbc_solver -> cbc_port [label="start,\nnew_best_sol"];
+        cbc_port -> dcbc_solver [label="new_sol,\ndone"];
+    }
+
+    
+    edge [style=dashed, constraint=false];
+    dcbc_master -> dcbc_slave [label="submit"];
+    dcbc_master -> dcbc_solver [label="new_sol"];
+    dcbc_solver -> dcbc_master [label="new_sol,\ndone"];
+    
+}
