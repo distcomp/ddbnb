@@ -24,7 +24,7 @@ handle_cast(do_init, State) ->
 handle_cast({best_val, Name, Val}, State) ->
     {noreply, update_best(Name, Val, none, State)};
 handle_cast({solver_done, Name, Status, Val, Sol, Log}, State0) ->
-    io:format("~.3f Subproblem ~p status: ~p, result=~p~n", [seconds_elapsed(State0#state.start_ts), Name, Status, Val]),
+    io:format("~.3f ~p ~p, result=~p~n", [seconds_elapsed(State0#state.start_ts), Name, Status, Val]),
     ok = file:write_file(integer_to_list(Name) ++ ".log", Log),
     State = update_best(Name, Val, Sol, State0),
     Subp = dict:fetch(Name, State#state.stubs),
@@ -49,7 +49,7 @@ find_next_problem(Stubs) ->
           (_K, #subp{status = running}, {Next, _}) -> {Next, true};
           (_K, _V, A) -> A end, {none, false}, Stubs).
 
-submit_problem(Name, {State, []}) ->
+submit_problem(_Name, {State, []}) ->
     {State, []};
 submit_problem(Name, {State, [SlavePid | Tail] = Slaves}) ->
     Subp = dict:fetch(Name, State#state.stubs),
@@ -58,25 +58,27 @@ submit_problem(Name, {State, [SlavePid | Tail] = Slaves}) ->
                                  [{best_val, State#state.best_val}, {stub, Data},
                                   {solver_args, State#state.solver_args}]) of
         {ok, SolverPid} ->
+            io:format("~.3f ~p started: ~s~n", [seconds_elapsed(State#state.start_ts), Name, Subp#subp.path]),
             Ref = monitor(process, SolverPid),
             Subp1 = Subp#subp{pid = SolverPid, slave_pid = SlavePid, ref = Ref, status = running},
             {State#state{stubs = dict:store(Name, Subp1, State#state.stubs)}, Slaves};
         {error, _} ->
+            io:format("Failed to start ~s as ~p~n", [Subp#subp.path, Name]),
             submit_problem(Name, {State, Tail})
     end.
 
 update_best(Name, Val, Sol, #state{best_val = BV1, best_sol = {BV2, _BS}} = State) ->
     case {is_better_than(Val, BV1, minimize), is_better_than(Val, BV2, minimize), Sol} of %% NOTE: minimization
         {true, true, Sol} when Sol =/= none ->
-            io:format("~.3f ~p New best_val and best_sol: ~p~n", [seconds_elapsed(State#state.start_ts), Name, Val]),
+            io:format("~.3f ~p best_val and best_sol: ~p~n", [seconds_elapsed(State#state.start_ts), Name, Val]),
             broadcast_best_val(Name, Val, State#state.stubs),
             State#state{best_val = Val, best_sol = {Val, Sol}};
         {true, _, Sol} ->
-            io:format("~.3f ~p New best_val: ~p~n", [seconds_elapsed(State#state.start_ts), Name, Val]),
+            io:format("~.3f ~p best_val: ~p~n", [seconds_elapsed(State#state.start_ts), Name, Val]),
             broadcast_best_val(Name, Val, State#state.stubs),
             State#state{best_val = Val};
         {false, true, Sol} when Sol =/= none ->
-            io:format("~.3f ~p New best_sol: ~p~n", [seconds_elapsed(State#state.start_ts), Name, Val]),
+            io:format("~.3f ~p best_sol: ~p~n", [seconds_elapsed(State#state.start_ts), Name, Val]),
             State#state{best_sol = {Val, Sol}};
         _ ->
             State
@@ -118,21 +120,21 @@ handle_info({'DOWN', Ref, process, _Pid, Reason}, State) ->
     State1 = State#state{stubs = dict:store(Name, Subp1, State#state.stubs)},
     {noreply, submit_next_problem(State1, Subp#subp.slave_pid)}.
 
-terminate(_Reason, _State) ->
-    ok.
+terminate(_Reason, State) ->
+    dict:fold(fun (K, _V, _A) -> file:delete(integer_to_list(K) ++ ".log") end,
+              ok, State#state.stubs).
 
 submit_next_problem(State, SlavePid) ->
     case find_next_problem(State#state.stubs) of
         {none, false} ->
-            {BestVal, _BestSol} = State#state.best_sol,
-            io:format("~.3f Done, best value = ~p, best value in solution = ~p~n",
-                      [seconds_elapsed(State#state.start_ts), State#state.best_val, BestVal]),
+            {BestVal, BestSol} = State#state.best_sol,
+            ok = file:write_file("solution.sol", BestSol),
+            io:format("~.3f Done, best value = ~p, best value in solution = ~p~nsolution written to solution.sol~n",
+                      [seconds_elapsed(State#state.start_ts), State#state.best_val, BestVal]),            
             State;
         {none, true} ->
             State;
         {Name, _} ->
-            {State1, Slaves} = submit_problem(Name, {State, [SlavePid]}),
+            {State1, _Slaves} = submit_problem(Name, {State, [SlavePid]}),
             State1
     end.
-
-
