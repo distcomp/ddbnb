@@ -82,9 +82,9 @@ void sendBestSolutionValue(double value)
     buf[0] = 3;
     writeDouble(buf + 1, value);
     write_cmd(buf, sizeof(buf));
-#else
-    printf(">>> sendBestSolutionValue(): %lf\n", value);
 #endif // NO_PORT
+    printf(">>> sendBestSolutionValue(): %lf\n", value);
+
 }
 
 void sendResult(int status, int status2, double result)
