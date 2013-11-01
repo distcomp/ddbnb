@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #include "CbcModel.hpp"
 #include "OsiClpSolverInterface.hpp"
@@ -11,14 +12,32 @@
 typedef unsigned char byte;
 
 static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
-bool g_bNewBestSolution = false;
-double g_dBestSolution;
-double g_dOurBestSolution = 1e50;
+
+int g_stdoutFd = 1;
+bool g_bPortMode = false;
+
+enum IncumbentState
+{
+    IS_NONE,
+    IS_FROM_CBC,
+    IS_FROM_ERL
+};
+
+IncumbentState g_incumbentState;
+double g_incumbentValue;
+
+void haveNewIncumbent(double value, bool fromCbc);
+void updateIncumbentInCBC(CbcModel *model);
 
 int read_exact(byte *buf, int len);
 int write_exact(byte *buf, int len);
 int read_cmd(byte *buf);
 int write_cmd(byte *buf, int len);
+
+bool isBetter(double oldVal, double newVal)
+{
+    return newVal < oldVal;
+}
 
 void writeDouble(byte *buf, double val)
 {
@@ -41,52 +60,6 @@ double readDouble(byte *buf)
     return *((double *)&l);
 }
 
-void updateBestSolution(CbcModel *model)
-{
-    pthread_mutex_lock(&g_mutex);
-    if (g_bNewBestSolution && g_dBestSolution < g_dOurBestSolution)
-    {
-        printf(">>> updateBestSolution(): setting best solution: %lf\n", g_dBestSolution);
-        model->setBestSolution(NULL, 0, g_dBestSolution);
-        g_bNewBestSolution = false;
-    }
-    pthread_mutex_unlock(&g_mutex);
-}
-
-// void sendSolution(double value, size_t numVars, const double *vars)
-// {
-//     if (vars == NULL)
-//     {
-//         return;
-//     }
-// #ifndef NO_PORT
-//     size_t length = 1 + 8 + 8 * numVars;
-//     byte *buf = new byte[length];
-//     buf[0] = 1;
-//     writeDouble(buf + 1, value);
-//     for (int i = 0; i < numVars; ++i)
-//     {
-//         writeDouble(buf + 1 + 8 + i*8, vars[i]);
-//     }
-//     write_cmd(buf, length);
-//     delete [] buf;
-// #else
-//     printf(">>> sendSolution(): %lf, %ld vars\n", value, numVars);
-// #endif // NO_PORT
-// }
-
-void sendBestSolutionValue(double value)
-{
-#ifndef NO_PORT
-    byte buf[1 + 8];
-    buf[0] = 3;
-    writeDouble(buf + 1, value);
-    write_cmd(buf, sizeof(buf));
-#endif // NO_PORT
-    printf(">>> sendBestSolutionValue(): %lf\n", value);
-
-}
-
 void sendResult(int status, int status2, double result)
 {
     char buf[100];
@@ -105,31 +78,16 @@ void sendResult(int status, int status2, double result)
     case 2:
         sprintf(p, "infeasible");
         break;
-        /*case 2:
-        sprintf(p, "stopped_on_gap");
-        break;
-    case 3:
-        sprintf(p, "stopped_on_nodes");
-        break;
-    case 4:
-        sprintf(p, "stopped_on_time");
-        break;
-    case 5:
-        sprintf(p, "stopped_on_user_event");
-        break;
-    case 6:
-        sprintf(p, "stopped_on_solutions");
-        break;*/
     default:
         sprintf(p, "other (status = %d, status2 = %d)",
             status, status2);
     }
     
-#ifndef NO_PORT
-    write_cmd((byte *)buf, p - buf + strlen(p));
-#else
-    printf(">>> sendResult: %s\n", p);
-#endif // NO_PORT
+    //fprintf(stderr, ">>> sendResult: %lf, %s\n", result, p);
+    if (g_bPortMode)
+    {
+        write_cmd((byte *)buf, p - buf + strlen(p));
+    }
 }
 
 class MyCbcCompare : public CbcCompareBase
@@ -143,19 +101,14 @@ public:
     bool newSolution(CbcModel *model, double objectiveAtContinuous,
         int numberInfeasibilitiesAtContinuous)
     {
-	pthread_mutex_lock(&g_mutex);
-	g_dOurBestSolution = model->getObjValue();
-	pthread_mutex_unlock(&g_mutex);
-
-        sendBestSolutionValue(model->getObjValue());
-        updateBestSolution(model);
+        updateIncumbentInCBC(model);
         return _cmp.newSolution(model, objectiveAtContinuous,
             numberInfeasibilitiesAtContinuous);
     }
 
     bool every1000Nodes(CbcModel *model, int numberNodes)
     {
-        updateBestSolution(model);
+        updateIncumbentInCBC(model);
         return _cmp.every1000Nodes(model, numberNodes);
     }
 
@@ -229,65 +182,188 @@ void *readerLoop(void *)
         case 1:
             if (len != 9)
             {
-                printf("Wrong input message size: %d != 9\n", len);
+                fprintf(stderr, "Wrong input message size: %d != 9\n", len);
                 exit(1);
             }
-            pthread_mutex_lock(&g_mutex);
-            g_dBestSolution = readDouble(buf + 1);
-            printf(">>> readerLoop(): received best solution: %lf\n", g_dBestSolution);
-            g_bNewBestSolution = true;
-            pthread_mutex_unlock(&g_mutex);
+            fprintf(stderr, ">>> readerLoop(): received best solution: %lf\n", readDouble(buf + 1));
+            haveNewIncumbent(readDouble(buf + 1), false);
             break;
         }
     }
-    printf("read_cmd() failed: %d\n", len);
+    fprintf(stderr, "read_cmd() failed: %d\n", len);
     exit(2);
+}
+
+void sendIncumbent(double value)
+{
+    fprintf(stderr, ">>> sendIncumbent(): %lf\n", value);
+    if (g_bPortMode)
+    {
+        byte buf[1 + 8];
+        buf[0] = 3;
+        writeDouble(buf + 1, value);
+        write_cmd(buf, sizeof(buf));
+    }
+}
+
+void haveNewIncumbent(double value, bool fromCbc)
+{
+    pthread_mutex_lock(&g_mutex);
+    switch (g_incumbentState)
+    {
+    case IS_NONE:
+        g_incumbentState = fromCbc ? IS_FROM_CBC : IS_FROM_ERL;
+        g_incumbentValue = value;
+        if (fromCbc)
+        {
+            sendIncumbent(value);
+        }
+        break;
+    default:
+        if (isBetter(g_incumbentValue, value))
+        {
+            g_incumbentState = fromCbc ? IS_FROM_CBC : IS_FROM_ERL;
+            g_incumbentValue = value;
+            if (fromCbc)
+            {
+                sendIncumbent(value);
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_mutex);
+}
+
+void updateIncumbentInCBC(CbcModel *model)
+{
+    pthread_mutex_lock(&g_mutex);
+    if (g_incumbentState == IS_FROM_ERL)
+    {
+        fprintf(stderr, ">>> updateIncumbentInCBC(): setting best solution: %lf\n", g_incumbentValue);
+        model->setBestSolution(NULL, 0, g_incumbentValue);
+        g_incumbentState = IS_FROM_CBC;
+    }
+    pthread_mutex_unlock(&g_mutex);
+}
+
+void processLine(const char *line)
+{
+    const char *solString = "Integer solution of";
+    const char *p = strstr(line, solString);
+    if (p != NULL)
+    {
+        const char *incumbentValue = p + strlen(solString);
+        haveNewIncumbent(atof(incumbentValue), true);
+    }
+}
+
+void *pipeReaderLoop(void *arg)
+{
+    char buf[1024];
+    int tail = 0;
+    do
+    {
+        int ret = read((int)(long)arg, buf + tail, sizeof(buf) - tail - 1);
+        if (ret <= 0)
+        {
+            fprintf(stderr, "read() from pipe failed: %s\n", strerror(errno));
+            exit(1);
+        }
+        
+        write(g_stdoutFd, buf, ret);
+        
+        int start = 0;
+        for (int i = 0; i < ret; ++i)
+        {
+            if (buf[i] == '\n')
+            {
+                buf[i] = '\0';
+                processLine(buf + start);
+                start = i + 1;
+            }
+        }
+        int tail = ret - start;
+        if (tail > 0)
+        {
+            memmove(buf, buf + start, tail);
+        }
+    }
+    while (true);
 }
 
 int main(int argc, char **argv)
 {
     if (argc < 2)
     {
-        printf("Usage: %s <AMPL stub path> [-o <log file>] [-b <best solution value>] [-- CBC args]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <AMPL stub path> [-p] [-o <log file>] [-b <best solution value>] [-- CBC args]\n", argv[0]);
         return 1;
     }
 
     OsiClpSolverInterface solver;
     CbcModel model(solver);
 
-    for (char **p = argv; *p && strcmp(*p, "--"); ++p)
+    const char *logFileName = NULL;
+
+    char **p = argv;
+    for (; *p && strcmp(*p, "--"); ++p)
     {
         if (!strcmp(*p, "-b"))
         {
-            model.setBestSolution(NULL, 0, atof(*(p + 1)));
+            g_incumbentState = IS_FROM_CBC;
+            g_incumbentValue = atof(*(p + 1));
+            model.setBestSolution(NULL, 0, g_incumbentValue);
+            ++p;
+        }
+        if (!strcmp(*p, "-p"))
+        {
+            g_bPortMode = true;
+        }
+        if (!strcmp(*p, "-o"))
+        {
+            logFileName = *(p + 1);
+            ++p;
         }
     }
 
     MyCbcCompare cmp;
     model.setNodeComparison(cmp);
 
-#ifndef NO_PORT
-    pthread_t thread;
-    if (pthread_create(&thread, NULL, readerLoop, NULL))
+    if (g_bPortMode)
+    {
+        pthread_t thread;
+        if (pthread_create(&thread, NULL, readerLoop, NULL))
+        {
+            return 1;
+        }
+    }
+
+    int pipefds[2];
+    if (pipe(pipefds))
+    {
+        fprintf(stderr, "pipe() failed: %s\n", strerror(errno));
+        return 1;
+    }
+    g_stdoutFd = dup(1);
+    dup2(pipefds[1], 1);
+    pthread_t pipeReaderThread;
+    if (pthread_create(&pipeReaderThread, NULL, pipeReaderLoop, (void *)(long)pipefds[0]))
     {
         return 1;
     }
-#endif // NO_PORT
 
     FILE *f = NULL;
-    for (char **p = argv; *p && strcmp(*p, "--"); ++p)
+    int oldStdout, oldStderr;
+    if (logFileName != NULL)
     {
-        if (!strcmp(*p, "-o"))
+        f = fopen(logFileName, "w");
+        if (f == NULL)
         {
-            f = fopen(*(p + 1), "w");
-            if (f == NULL)
-            {
-                printf("Failed to open %s for writing\n", *(p + 1));
-                return 1;
-            }
-            dup2(fileno(f), 1);
-            dup2(fileno(f), 2);
+            fprintf(stderr, "Failed to open %s for writing\n", logFileName);
+            return 1;
         }
+        oldStdout = dup(g_stdoutFd);
+        dup2(fileno(f), g_stdoutFd);
+        oldStderr = dup(2);
+        dup2(fileno(f), 2);
     }
 
     std::vector<std::string> rawArgs;
@@ -295,8 +371,7 @@ int main(int argc, char **argv)
     rawArgs.push_back(argv[1]);
     rawArgs.push_back("-AMPL");
     rawArgs.push_back("wantsol=1");
-    char **p = argv;
-    for (; *p && strcmp(*p, "--"); ++p) {}
+    rawArgs.push_back("log=1");
     if (*p)
     {
         for (++p; *p; ++p)
@@ -314,19 +389,16 @@ int main(int argc, char **argv)
 
     int res = CbcMain(rawArgs.size(), &(args[0]), model);
 
-    printf("CbcMain: %d %d %d", res, model.status(), model.secondaryStatus());
+    fprintf(stderr, ">>> CbcMain: %d %d %d\n", res, model.status(), model.secondaryStatus());
     
-    // if (model.status() == 0)
-    // {
-    //     sendSolution(model.getObjValue(), model.getNumCols(),
-    //         model.bestSolution());
-    // }
-    sendResult(model.status(), model.secondaryStatus(), model.getObjValue());
-
     if (f != NULL)
     {
+        dup2(oldStdout, g_stdoutFd);
+        dup2(oldStderr, 2);
         fclose(f);
     }
+
+    sendResult(model.status(), model.secondaryStatus(), model.getObjValue());
 
     return 0;
 }

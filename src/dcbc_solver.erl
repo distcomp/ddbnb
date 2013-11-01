@@ -20,7 +20,7 @@ init([CbcPath, Name, MasterPid, Args]) ->
 
 handle_cast({do_init, CbcPath, Stub, BestVal}, State) ->
     ok = file:write_file(stub_filename(), Stub),
-    Args = [stub_filename(), "-o", log_filename()] ++ 
+    Args = [stub_filename(), "-p", "-o", log_filename()] ++ 
         case BestVal of
             none ->
                 [];
@@ -40,6 +40,12 @@ handle_cast({update_best_val, Val}, #state{port = Port} = State) ->
 handle_info({'DOWN', _Ref, process, _Pid, _Reason}, State) -> 
     {stop, master_down, State};
 handle_info({'EXIT', _Port, _Reason}, State) ->
+    Log = case file:read_file(log_filename()) of
+              {ok, LL} -> LL;
+              {error, _Reason} -> <<>>
+          end,
+    gen_server:cast(State#state.master,
+                    {solver_done, State#state.name, port_terminated, none, <<>>, Log}),
     {stop, port_termanated, State};
 handle_info({Port, {data, Data}}, #state{port = Port} = State) ->
     case decode(Data) of
@@ -48,7 +54,10 @@ handle_info({Port, {data, Data}}, #state{port = Port} = State) ->
             {noreply, State};
         {done, Val, _} ->
             {ok, Sol} = file:read_file(sol_filename()),
-            {ok, Log} = file:read_file(log_filename()),
+            Log = case file:read_file(log_filename()) of
+                      {ok, LL} -> LL;
+                      {error, _Reason} -> <<>>
+                  end,
             [L1 | _Rest] = string:tokens(binary_to_list(Sol), "\n"),
             [_C, _V, R | _Rest1] = string:tokens(L1, ", "),
             case R of

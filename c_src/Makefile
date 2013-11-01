@@ -1,6 +1,6 @@
 include ../rules.$(shell uname)
 CBC_INST = $(HOME)/built
-CPPFLAGS = -I$(CBC_INST)/include/coin #-DNO_PORT
+CPPFLAGS = -I$(CBC_INST)/include/coin
 CXXFLAGS = -O0 -g
 LIBS := -lCbcSolver -lcoinasl -lCbc -lCgl -lOsiClp -lOsi -lCoinUtils -lClp $(LIBS)
 

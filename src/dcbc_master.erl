@@ -5,7 +5,7 @@
 -behaviour(gen_server).
 -export([init/1, handle_cast/2, handle_info/2, terminate/2]).
 
--record(state, {best_val = none, best_sol = {none, none}, stubs, start_ts, solver_args}).
+-record(state, {best_val = none, best_sol = {none, <<>>}, stubs, start_ts, solver_args}).
 
 -record(subp, {path, pid = none, status = none, slave_pid = none, ref = none}).
 
