@@ -36,7 +36,7 @@ int write_cmd(byte *buf, int len);
 
 bool isBetter(double oldVal, double newVal)
 {
-    return newVal < oldVal;
+    return newVal < oldVal && oldVal - newVal > 0.000001;
 }
 
 void writeDouble(byte *buf, double val)
@@ -93,14 +93,20 @@ void sendResult(int status, int status2, double result)
 class MyCbcCompare : public CbcCompareBase
 {
 public:
+    MyCbcCompare(CbcModel *model)
+    {
+        _model = model;
+    }
     bool test(CbcNode *x, CbcNode *y)
     {
+        updateIncumbentInCBC(_model);
         return _cmp.test(x, y);
     }
     
     bool newSolution(CbcModel *model, double objectiveAtContinuous,
         int numberInfeasibilitiesAtContinuous)
     {
+        _model = model;
         updateIncumbentInCBC(model);
         return _cmp.newSolution(model, objectiveAtContinuous,
             numberInfeasibilitiesAtContinuous);
@@ -108,17 +114,21 @@ public:
 
     bool every1000Nodes(CbcModel *model, int numberNodes)
     {
+        _model = model;
         updateIncumbentInCBC(model);
         return _cmp.every1000Nodes(model, numberNodes);
     }
 
     CbcCompareBase *clone() const
     {
-        return new MyCbcCompare(*this);
+        MyCbcCompare *result = new MyCbcCompare(*this);
+        result->_model = _model;
+        return result;
     }
 
 private:
     CbcCompareDefault _cmp;
+    CbcModel *_model;
 };
 
 int read_cmd(byte *buf)
@@ -324,7 +334,7 @@ int main(int argc, char **argv)
         }
     }
 
-    MyCbcCompare cmp;
+    MyCbcCompare cmp(&model);
     model.setNodeComparison(cmp);
 
     if (g_bPortMode)
@@ -390,13 +400,6 @@ int main(int argc, char **argv)
     int res = CbcMain(rawArgs.size(), &(args[0]), model);
 
     fprintf(stderr, ">>> CbcMain: %d %d %d\n", res, model.status(), model.secondaryStatus());
-    
-    if (f != NULL)
-    {
-        dup2(oldStdout, g_stdoutFd);
-        dup2(oldStderr, 2);
-        fclose(f);
-    }
 
     sendResult(model.status(), model.secondaryStatus(), model.getObjValue());
 
