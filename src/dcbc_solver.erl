@@ -46,9 +46,9 @@ handle_info({'EXIT', _Port, _Reason}, State) ->
     {Result, Inc, Sol} = case file:read_file(sol_filename()) of
                              {ok, SS} ->
                                  [L1 | _Rest] = string:tokens(binary_to_list(SS), "\n"),
-                                 [_C, _V, R | _Rest1] = string:tokens(L1, ", "),
+                                 [_C, _V, R | Rest1] = string:tokens(L1, "/, "),
                                  case R of
-                                     "optimal" -> {success, State#state.sol_incumbent, SS};
+                                     "optimal" -> {success, get_objective(Rest1), SS};
                                      "infeasible" -> {infeasible, none, <<>>}
                                  end;
                              {error, _Reason} ->
@@ -65,6 +65,20 @@ handle_info({Port, {data, Data}}, #state{port = Port} = State) ->
         {done, Val, _} ->
             {noreply, State#state{sol_incumbent = Val}}
     end.
+
+get_objective(["objective", Val | _Rest]) ->
+    case string:to_float(Val) of
+        {error, _} ->
+            case string:to_integer(Val) of
+                {error, _} -> none;
+                {V, _} -> V
+            end;
+        {V, _} -> V
+    end;
+get_objective([_Head | Rest]) ->
+    get_objective(Rest);
+get_objective([]) ->
+    none.
 
 decode(<<2, BestVal/float, Status/binary>>) ->
     {done, BestVal, binary_to_list(Status)};
