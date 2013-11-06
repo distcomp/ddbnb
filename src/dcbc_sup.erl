@@ -33,7 +33,8 @@ init([master]) ->
     {ok, {{one_for_one, 0, 1}, [?CHILD(dcbc_master, worker, [Args, Files])]}};
 init([slave]) ->
     {ok, CbcPath} = application:get_env(cbc_path),
-    {ok, {{one_for_one, 5, 10}, [?CHILD(dcbc_slave, worker, []),
+    {ok, Ncpu} = application:get_env(num_cpu),
+    {ok, {{one_for_one, 5, 10}, [?CHILD(dcbc_slave, worker, [Ncpu]),
                                  ?CHILD(dcbc_slave_sup, supervisor, [CbcPath])]}};
 init([registry]) ->
     {ok, {{one_for_one, 5, 10}, [?CHILD(dcbc_registry, worker, [])]}}.
