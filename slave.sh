@@ -6,5 +6,5 @@ if [[ $1 -eq "" ]]; then
     NCPU=0
 fi
 echo 'NCPU='$NCPU
-erl -pa ebin -name slave@$ADDR -boot start_sasl -s dcbc_app -dcbc working_mode slave \
-    -dcbc cbc_path  "\"$PWD/c_src/cbc_port\"" -dcbc registry_node `cat registry-node` -dcbc num_cpu $NCPU
+erl -pa ebin -detached -name slave@$ADDR -boot start_sasl -s dcbc_app -config slave.config \
+    -dcbc cbc_path  "\"$PWD/c_src/cbc_port\"" -dcbc num_cpu $NCPU
