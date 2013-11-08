@@ -1,9 +1,9 @@
 CBC_PORT = c_src/cbc_port
 
-compile: $(CBC_PORT)
+compile: c_src
 	./rebar compile
 
-$(CBC_PORT) : c_src/cbc_port.cc
+c_src:
 	$(MAKE) -C c_src
 
 deps:
@@ -15,4 +15,4 @@ clean:
 	./rebar clean
 	rm -f erl_crash.dump
 
-.PHONY: deps test clean compile
+.PHONY: deps test clean compile c_src
