@@ -20,7 +20,7 @@ int main(int argc, char **argv)
         std::cout << "VarN\tLB\tUB\tType" << std::endl;
         for (int i = 0; i < p.num_vars(); ++i)
         {
-            std::cout << i << "\t" << var_name_ASL((ASL*)p.asl_, i) << "\t" << p.var_lb(i) << "\t" << p.var_ub(i) << "\t"
+            std::cout << i << "\t" << p.var_name(i) << "\t" << p.var_lb(i) << "\t" << p.var_ub(i) << "\t"
                       << getVarType(p, i) << std::endl;
         }
         return 0;

@@ -1,6 +1,7 @@
 #include "common.h"
 
 #include <iostream>
+#include <cmath>
 
 typedef std::vector<ampl::ProblemChanges> VecChanges;
 
