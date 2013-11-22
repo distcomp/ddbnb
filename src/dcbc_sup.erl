@@ -10,6 +10,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type, Args), {I, {I, start_link, Args}, permanent, 5000, Type, [I]}).
+-define(CHILD_TMP(I, Type, Args), {I, {I, start_link, Args}, temporary, 5000, Type, [I]}).
 
 %% ===================================================================
 %% API functions
@@ -30,7 +31,7 @@ start_link(Type) ->
 init([master]) ->
     {ok, Files} = application:get_env(files),
     {ok, Args} = application:get_env(args),
-    {ok, {{one_for_one, 0, 1}, [?CHILD(dcbc_master, worker, [Args, Files])]}};
+    {ok, {{one_for_one, 0, 1}, [?CHILD_TMP(dcbc_master, worker, [Args, Files])]}};
 init([slave]) ->
     {ok, CbcPath} = application:get_env(cbc_path),
     {ok, Ncpu} = application:get_env(num_cpu),

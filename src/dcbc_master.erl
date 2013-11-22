@@ -121,8 +121,9 @@ handle_info({'DOWN', Ref, process, _Pid, Reason}, State) ->
     {noreply, submit_next_problem(State1, Subp#subp.slave_pid)}.
 
 terminate(_Reason, State) ->
-    dict:fold(fun (K, _V, _A) -> file:delete(integer_to_list(K) ++ ".log") end,
-              ok, State#state.stubs).
+    ok.
+    %dict:fold(fun (K, _V, _A) -> file:delete(integer_to_list(K) ++ ".log") end,
+    %          ok, State#state.stubs).
 
 submit_next_problem(State, SlavePid) ->
     case find_next_problem(State#state.stubs) of
@@ -130,7 +131,8 @@ submit_next_problem(State, SlavePid) ->
             {BestVal, BestSol} = State#state.best_sol,
             ok = file:write_file("solution.sol", BestSol),
             io:format("~.3f Done, best value = ~p, best value in solution = ~p~nsolution written to solution.sol~n",
-                      [seconds_elapsed(State#state.start_ts), State#state.best_val, BestVal]),            
+                      [seconds_elapsed(State#state.start_ts), State#state.best_val, BestVal]),
+            exit(normal),
             State;
         {none, true} ->
             State;
