@@ -1,6 +1,6 @@
 #!/usr/bin/env escript
 %% -*- erlang -*-
-%%! -pa ebin -boot start_sasl -name master@83.149.248.40
+%%! -pa ebin -boot start_sasl %%%NAME%%%
 
 main(Args) ->
     %{ok, State} = dcbc_master:init([Stubs]),
