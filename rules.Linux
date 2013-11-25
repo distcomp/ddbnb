@@ -4,4 +4,4 @@ LDFLAGS = -Wl,-rpath,$(HOME)/built/lib:$(MKL)
 LIBS = -lCbcSolver -lcoinasl -lCbc -lCgl -lOsiClp -lOsi -lCoinUtils -lClp -lcoinmumps -lcoinglpk -lz -lbz2 -lrt -lcoinmetis $(BLAS)
 ASL_HOME = $(HOME)/ampl
 CPPFLAGS = -I$(ASL_HOME)/build/solvers -I$(ASL_HOME)
-LDFLAGS += -L$(ASL_HOME)/build/solvers
+LINK_ASL = -L$(ASL_HOME)/build/solvers $(ASL_HOME)/build/solvers/util/libutil.a -lamplsolver -ldl

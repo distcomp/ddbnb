@@ -1,4 +1,4 @@
 LIBS = -lCbcSolver -lcoinasl -lCbc -lCgl -lOsiClp -lOsi -lCoinUtils -lClp
-ASL_HOME = /Users/ssmir/work/4isa/ampl/ampl
+ASL_HOME = $(HOME)/work/4isa/ampl/ampl
 CPPFLAGS = -I$(ASL_HOME)/build/solvers -I$(ASL_HOME)
-LDFLAGS = -L$(ASL_HOME)/build/solvers
+LINK_ASL = -L$(ASL_HOME)/build/solvers $(ASL_HOME)/build/solvers/util/libutil.a -lamplsolver

@@ -9,7 +9,7 @@ cbc_port: cbc_port.o
 	$(CXX) -o $@ $(LDFLAGS) $^ -L$(CBC_INST)/lib $(LIBS) 
 
 nlmod: nlmod.o common.o 
-	$(CXX) -o $@ $(LDFLAGS) $^ -L$(CBC_INST)/lib $(ASL_HOME)/build/solvers/util/libutil.a -lamplsolver
+	$(CXX) -o $@ $(LDFLAGS) $^ $(LINK_ASL)
 
 common.o: common.cc common.h
 
