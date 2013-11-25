@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @author Sergey Smirnov <sasmir@gmail.com>
+ */
+
 #include <pthread.h>
 #include <unistd.h>
 #include <string.h>

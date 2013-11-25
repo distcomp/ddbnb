@@ -1,0 +1,38 @@
+DCBC: solve a MILP problem with a distributed set of CBC solver instances
+
+CBC is a free open-source MILP solver from the COIN-OR suite
+(https://projects.coin-or.org/Cbc). DCBC is an Erlang-based system managing
+a set of CBC solver instances running together on a set of subproblems generated
+from a single MILP problem.
+
+
+Executables
+
+c_src/cbc_port
+A port program for communicating with CBC from Erlang.
+
+c_src/nlmod
+A program for splitting a problem, encoded as AMPL stub, to a set of subproblems.
+
+registry.sh
+Starts an Erlang node managing registration of slave nodes. Only one registry
+node should be started. Its node@host should be set in the registry-node file.
+
+slave.sh [number of cpu]
+Starts an Erlang node which starts CBC solver instances. It should be started
+one per host.
+
+master.sh [solver options <-->] <list of .nl files of subproblems>
+Solver a set of subproblems on all available slave nodes found in registry.
+
+solve.sh [solver options <-->] <list of .nl files of subproblems>
+Same as master.sh but exits after solving the last subproblem.
+
+
+External dependencies
+
+AMPL solver library (http://www.netlib.org/ampl/solvers/ or https://github.com/ampl/ampl)
+ASL util library from Victor Zverovich (https://github.com/ampl/ampl)
+CBC (https://projects.coin-or.org/Cbc)
+Erlang (http://www.erlang.org)
+

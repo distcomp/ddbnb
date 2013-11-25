@@ -1,3 +1,5 @@
+%% @author Sergey Smirnov <sasmir@gmail.com>
+
 -module(dcbc_slave_sup).
 
 -export([start_link/1]).

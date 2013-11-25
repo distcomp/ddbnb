@@ -8,7 +8,7 @@
     },
     {dcbc, [
         {working_mode, slave},
-	{registry_node, 'registry@irbis1.isa.ru'}
+	{registry_node, '%%%REGISTRY%%%'}
         ]
     }
 ].

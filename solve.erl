@@ -1,12 +1,13 @@
 #!/usr/bin/env escript
 %% -*- erlang -*-
 %%! -pa ebin -boot start_sasl %%%NAME%%%
+%% @author Sergey Smirnov <sasmir@gmail.com>
 
 main(Args) ->
     %{ok, State} = dcbc_master:init([Stubs]),
     %gen_server:enter_loop(dcbc_master, [], State).
     {SArgs, Stubs} = split_args(Args, []),
-    pong = net_adm:ping('registry@irbis1.isa.ru'),
+    pong = net_adm:ping('%%%REGISTRY%%%'),
     global:sync(),
     {ok, Pid} = dcbc_master:start_link(SArgs, Stubs),
     monitor(process, Pid),

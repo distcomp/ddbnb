@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @author Sergey Smirnov <sasmir@gmail.com>
+ */
+
 #include "common.h"
 
 #include <iostream>

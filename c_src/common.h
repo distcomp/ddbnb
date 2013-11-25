@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @author Sergey Smirnov <sasmir@gmail.com>
+ */
+
 #ifndef __COMMON_H__
 #define __COMMON_H__
 

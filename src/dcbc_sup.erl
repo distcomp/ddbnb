@@ -1,3 +1,5 @@
+%% @author Sergey Smirnov <sasmir@gmail.com>
+
 -module(dcbc_sup).
 
 -behaviour(supervisor).

@@ -1,3 +1,5 @@
+%% @author Sergey Smirnov <sasmir@gmail.com>
+
 -module(dcbc_registry).
 
 -export([start_link/0, register/2, unregister/1, lookup/1]).
