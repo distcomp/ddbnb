@@ -1,0 +1,13 @@
+diff --git a/solvers/util/problem.h b/solvers/util/problem.h
+index 9a61364..221d18e 100644
+--- a/solvers/util/problem.h
++++ b/solvers/util/problem.h
+@@ -164,7 +164,7 @@ class Problem : Noncopyable {
+ 
+   // Frees all the arrays that were allocated by modifications to the problem.
+   void Free();
+-
++public:
+   // Write an .nl file.
+   void WriteNL(fmt::StringRef stub, ProblemChanges *pc = 0, unsigned flags = 0);
+ 

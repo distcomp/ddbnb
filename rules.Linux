@@ -1,7 +1,3 @@
-MKL = /opt/intel/composer_xe_2013.0.079/mkl/lib/intel64
-BLAS = -L$(MKL) -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread
-LDFLAGS = -Wl,-rpath,$(HOME)/built/lib:$(MKL)
-LIBS = -lCbcSolver -lcoinasl -lCbc -lCgl -lOsiClp -lOsi -lCoinUtils -lClp -lcoinmumps -lcoinglpk -lz -lbz2 -lrt -lcoinmetis $(BLAS)
-ASL_HOME = $(HOME)/ampl
+ASL_HOME = ../ampl
 CPPFLAGS = -I$(ASL_HOME)/build/solvers -I$(ASL_HOME)
 LINK_ASL = -L$(ASL_HOME)/build/solvers $(ASL_HOME)/build/solvers/util/libutil.a -lamplsolver -ldl
