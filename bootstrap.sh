@@ -1,7 +1,7 @@
 #!/bin/bash
 git clone https://github.com/ampl/ampl.git
 cd ampl
-patch -p 1 < ../ampl-$(uname).patch
+patch -p 1 < ../ampl.patch
 
 mkdir -p build
 cd build

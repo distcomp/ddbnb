@@ -1,4 +1,9 @@
 #!/bin/bash
-ADDR=$(/sbin/ifconfig | grep inet | sed -e /inet6/d -e /127.0.0.1/d | head -n 1 | sed 's/[^0-9]*\([0-9.][0-9.]*\).*$/\1/')
+ADDR=$($(dirname $0)/my_ip.sh)
 
-erl -name shell@$ADDR -remsh $1@$ADDR
+NODE=$(cat registry-node)
+if [[ "$1" != "registry" ]]; then
+    NODE="$1@$ADDR"
+fi
+
+erl -name shell@$ADDR -remsh $NODE

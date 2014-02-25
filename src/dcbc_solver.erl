@@ -40,10 +40,10 @@ handle_cast({update_best_val, Val}, #state{port = Port} = State) ->
 
 handle_info({'DOWN', _Ref, process, _Pid, _Reason}, State) -> 
     {stop, master_down, State};
-handle_info({'EXIT', _Port, _Reason}, State) ->
+handle_info({'EXIT', _Port, _ExitReason}, State) ->
     Log = case file:read_file(log_filename()) of
               {ok, LL} -> LL;
-              {error, _Reason} -> <<>>
+              {error, _LogReason} -> <<>>
           end,
     {Result, Inc, Sol} = case file:read_file(sol_filename()) of
                              {ok, SS} ->

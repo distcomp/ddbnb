@@ -10,6 +10,9 @@ deps:
 	./rebar get-deps
 	./rebar update-deps
 
+test: compile
+	cd test && ./run_test.sh
+
 clean:
 	$(MAKE) -C c_src clean
 	./rebar clean
