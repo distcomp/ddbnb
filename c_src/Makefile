@@ -7,7 +7,7 @@ CBC_LINK := $(shell env PKG_CONFIG_PATH=$(CBC_INST)/lib/pkgconfig pkg-config --l
 
 all: cbc_port nlmod
 
-cbc_port: cbc_port.o
+cbc_port: cbc_port.o ErlPortInterface.o
 	$(CXX) -o $@ -Wl,-rpath,$(CBC_INST)/lib $^ $(CBC_LINK)
 
 nlmod: nlmod.o common.o 
