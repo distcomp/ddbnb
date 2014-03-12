@@ -20,26 +20,21 @@ int g_stdoutFd = 1;
 
 ErlPortInterface g_portInterface;
 
-void sendResult(int status, int status2, double result)
+void sendResult(CbcModel &model, double result)
 {
-    char buf[100];
-    
-    switch (status)
+    if (model.isProvenOptimal())
     {
-    case 0:
-        g_portInterface.writeResult("success", result);
+        g_portInterface.writeResult("optimal", result);
         return;
-    case 1:
-        g_portInterface.writeResult("stopped", result);
-        return;
-    case 2:
+    }
+
+    if (model.isProvenInfeasible())
+    {
         g_portInterface.writeResult("infeasible", result);
         return;
     }
 
-    sprintf(buf, "other (status = %d, status2 = %d)",
-        status, status2);
-    g_portInterface.writeResult(buf, result);
+    g_portInterface.writeResult("stopped", result);
 }
 
 class MyCbcCompare : public CbcCompareBase, public BestValueAcceptor
@@ -164,6 +159,10 @@ int main(int argc, char **argv)
         {
             usePort = true;
         }
+        if (!strcmp(*p, "-q"))
+        {
+            g_portInterface.setQuiet(true);
+        }
         if (!strcmp(*p, "-o"))
         {
             logFileName = *(p + 1);
@@ -236,9 +235,14 @@ int main(int argc, char **argv)
 
     int res = CbcMain(rawArgs.size(), &(args[0]), model);
 
+    fflush(stdout);
+    fflush(stderr);
+
     fprintf(stderr, ">>> CbcMain: %d %d %d\n", res, model.status(), model.secondaryStatus());
 
-    sendResult(model.status(), model.secondaryStatus(), model.getObjValue());
+    sendResult(model, model.getObjValue());
+
+    fflush(stderr);
 
     return 0;
 }

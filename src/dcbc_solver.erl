@@ -4,7 +4,8 @@
 
 -export([start_link/4]).
 
--record(state, {solver_args, master, name, port = none, sol_incumbent = none}).
+-record(state, {solver_args, master, name, port = none, sol_incumbent = none,
+                sol_status = port_terminated}).
 
 -behaviour(gen_server).
 -export([init/1, handle_cast/2, handle_info/2, terminate/2]).
@@ -22,13 +23,7 @@ init([CbcPath, Name, MasterPid, Args]) ->
 
 handle_cast({do_init, CbcPath, Stub, BestVal}, State) ->
     ok = file:write_file(stub_filename(), Stub),
-    Args = [stub_filename(), "-p", "-o", log_filename()] ++ 
-        case BestVal of
-            none ->
-                [];
-            BestVal ->
-                ["-b", float_to_list(BestVal)]
-        end ++ ["--"] ++ State#state.solver_args,
+    Args = make_port_args(BestVal, State#state.solver_args),
     io:format("Starting solver for ~p: ~s ~p~n", [State#state.name, CbcPath, Args]),
     process_flag(trap_exit, true),
     Port = open_port({spawn_executable, CbcPath}, [{packet, 2}, nouse_stdio,
@@ -38,49 +33,40 @@ handle_cast({update_best_val, Val}, #state{port = Port} = State) ->
     Port ! {self(), {command, <<1, Val/float>>}},
     {noreply, State}.
 
+make_port_args(none, SolverArgs) ->
+    [stub_filename(), "-q", "-p", "-o", log_filename(),
+     "--" | SolverArgs];
+make_port_args(BestVal, SolverArgs) ->
+    [stub_filename(), "-q", "-p", "-o", log_filename(),
+     "-b", float_to_list(BestVal), "--" | SolverArgs].
+
 handle_info({'DOWN', _Ref, process, _Pid, _Reason}, State) -> 
     {stop, master_down, State};
 handle_info({'EXIT', _Port, _ExitReason}, State) ->
-    Log = case file:read_file(log_filename()) of
-              {ok, LL} -> LL;
-              {error, _LogReason} -> <<>>
-          end,
-    {Result, Inc, Sol} = case file:read_file(sol_filename()) of
-                             {ok, SS} ->
-                                 [L1 | _Rest] = string:tokens(binary_to_list(SS), "\n"),
-                                 [_C, _V, R | Rest1] = string:tokens(L1, "/, "),
-                                 case R of
-                                     "optimal" -> {success, get_objective(Rest1), SS};
-                                     "infeasible" -> {infeasible, none, <<>>}
-                                 end;
-                             {error, _Reason} ->
-                                 {port_terminated, none, <<>>}
-                         end,
-    gen_server:cast(State#state.master, {solver_done, State#state.name, Result,
-                                         Inc, Sol, Log}),
+    Log = get_file_content(log_filename()),
+    Sol = get_file_content(sol_filename()),
+    gen_server:cast(State#state.master,
+                    {solver_done, State#state.name, State#state.sol_status,
+                     State#state.sol_incumbent, Sol, Log}),
     {stop, normal, State};
 handle_info({Port, {data, Data}}, #state{port = Port} = State) ->
-    case decode(Data) of
-        {best_val, Val} ->
-            gen_server:cast(State#state.master, {best_val, State#state.name, Val}),
-            {noreply, State};
-        {done, Val, _} ->
-            {noreply, State#state{sol_incumbent = Val}}
+    {noreply, handle_port_msg(decode(Data), State)}.
+
+get_file_content(FileName) ->
+    case file:read_file(FileName) of
+        {ok, Content} -> Content;
+        {error, _Reason} -> <<>>
     end.
 
-get_objective(["objective", Val | _Rest]) ->
-    case string:to_float(Val) of
-        {error, _} ->
-            case string:to_integer(Val) of
-                {error, _} -> none;
-                {V, _} -> V
-            end;
-        {V, _} -> V
-    end;
-get_objective([_Head | Rest]) ->
-    get_objective(Rest);
-get_objective([]) ->
-    none.
+handle_port_msg({best_val, Val}, State) ->
+    gen_server:cast(State#state.master, {best_val, State#state.name, Val}),
+    State;
+handle_port_msg({done, Val, "optimal"}, State) ->
+    State#state{sol_incumbent = Val, sol_status = optimal};
+handle_port_msg({done, Val, "infeasible"}, State) ->
+    State#state{sol_status = infeasible};
+handle_port_msg({done, Val, "stopped"}, State) ->
+    State#state{sol_status = stopped}.
 
 decode(<<2, BestVal/float, Status/binary>>) ->
     {done, BestVal, binary_to_list(Status)};

@@ -30,6 +30,8 @@ class ErlPortInterface
 
     void writeResult(const std::string &status, double bestValue);
 
+    void setQuiet(bool quiet);
+
  private:
     enum BestValueState
     {
@@ -42,6 +44,7 @@ class ErlPortInterface
     double _bestValue;
     bool _bEnabled;
     pthread_mutex_t _mutex;
+    bool _quiet;
 
     static void *readerLoop(void *);
     void sendIncumbent(double value);

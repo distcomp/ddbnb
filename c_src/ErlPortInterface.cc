@@ -50,7 +50,13 @@ ErlPortInterface::ErlPortInterface()
 {
     _state = BV_NONE;
     _bEnabled = false;
+    _quiet = false;
     pthread_mutex_init(&_mutex, NULL);
+}
+
+void ErlPortInterface::setQuiet(bool quiet)
+{
+    _quiet = quiet;
 }
 
 void ErlPortInterface::writeResult(const std::string &status, double bestValue)
@@ -63,7 +69,10 @@ void ErlPortInterface::writeResult(const std::string &status, double bestValue)
 
     sprintf(p, "%s", status.c_str());
     
-    //fprintf(stderr, ">>> sendResult: %lf, %s\n", result, p);
+    if (!_quiet)
+    {
+        fprintf(stderr, ">>> sendResult: %lf, %s\n", bestValue, p);
+    }
     if (_bEnabled)
     {
         write_cmd((byte *)buf, p - buf + strlen(p));
@@ -133,22 +142,28 @@ void *ErlPortInterface::readerLoop(void *ptr)
         case 1:
             if (len != 9)
             {
-                fprintf(stderr, "Wrong input message size: %d != 9\n", len);
+                fprintf(stderr, ">>> Wrong input message size: %d != 9\n", len);
                 exit(1);
             }
-            fprintf(stderr, ">>> readerLoop(): received best solution: %lf\n",
-                readDouble(buf + 1));
+            if (!This->_quiet)
+            {
+                fprintf(stderr, ">>> readerLoop(): received best solution: %lf\n",
+                    readDouble(buf + 1));
+            }
             This->setBestValue(readDouble(buf + 1), false);
             break;
         }
     }
-    fprintf(stderr, "read_cmd() failed: %d\n", len);
+    fprintf(stderr, ">>> read_cmd() failed: %d\n", len);
     exit(2);
 }
 
 void ErlPortInterface::sendIncumbent(double value)
 {
-    fprintf(stderr, ">>> sendIncumbent(): %lf\n", value);
+    if (!_quiet)
+    {
+        fprintf(stderr, ">>> sendIncumbent(): %lf\n", value);
+    }
     if (_bEnabled)
     {
         byte buf[1 + 8];
@@ -190,7 +205,10 @@ void ErlPortInterface::getBestValue(BestValueAcceptor &acceptor)
     pthread_mutex_lock(&_mutex);
     if (_state == BV_FROM_ERL)
     {
-        fprintf(stderr, ">>> getBestValue(): setting best solution in solver: %lf\n", _bestValue);
+        if (!_quiet)
+        {
+            fprintf(stderr, ">>> getBestValue(): setting best solution in solver: %lf\n", _bestValue);
+        }
         acceptor.acceptNewBestValue(_bestValue);
         _state = BV_FROM_SOLVER;
     }
