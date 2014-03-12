@@ -1,3 +1,2 @@
-ASL_HOME = ../ampl
-CPPFLAGS = -I$(ASL_HOME)/build/solvers -I$(ASL_HOME)
-LINK_ASL = -L$(ASL_HOME)/build/solvers $(ASL_HOME)/build/solvers/util/libutil.a -lamplsolver -ldl
+ASL_LIBS += -ldl
+LDFLAGS += -Wl,-rpath,$(CBC_HOME)/lib

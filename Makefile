@@ -11,11 +11,12 @@ deps:
 	./rebar update-deps
 
 test: compile
-	cd test && ./run_test.sh
+	$(MAKE) -C test
 
 clean:
+	$(MAKE) -C test clean
 	$(MAKE) -C c_src clean
 	./rebar clean
-	rm -f erl_crash.dump
+	rm -f erl_crash.dump *.log solution.sol
 
 .PHONY: deps test clean compile c_src
