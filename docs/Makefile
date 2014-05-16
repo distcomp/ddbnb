@@ -1,3 +1,5 @@
+all: dcbc-calls.png dcbc-tree.png
+
 preview : dcbc-calls.png
 	open $<
 

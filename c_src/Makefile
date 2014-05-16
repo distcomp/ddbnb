@@ -8,7 +8,7 @@ CPPFLAGS += -I$(CBC_HOME)/include/coin
 
 SCIP_HOME ?= /usr/local
 OSTYPE := $(shell uname -s | tr '[:upper:]' '[:lower:]')
-SCIP_LIBS := -L$(SCIP_HOME)/lib -lscipopt-3.1.0.$(OSTYPE).$(shell uname -m).gnu.opt \
+SCIP_LIBS ?= -L$(SCIP_HOME)/lib -lscipopt-3.1.0.$(OSTYPE).$(shell uname -m).gnu.opt \
 	-lz -lgmp -lreadline -lpthread
 CPPFLAGS += -I$(SCIP_HOME)/include
 
@@ -18,7 +18,11 @@ CFLAGS += $(OPT) -std=c99
 
 include ../rules.$(shell uname)
 
-all: cbc_port scip_port nlmod
+all: cbc_port nlmod
+
+ifeq ($(USE_SCIP),true)
+all: scip_port
+endif
 
 cbc_port: cbc_port.o ErlPortInterface.o
 	$(CXX) -o $@ $(LDFLAGS) $^ $(CBC_LIBS)

@@ -15,10 +15,10 @@ void writeChanged(const std::string &prefix, ampl::Problem &p,
 {
     for (size_t i = 0; i < changes.size(); ++i)
     {
-        std::ostringstream name;
-        name << prefix << "_" << i << ".nl";
-        p.WriteNL(name.str(), &(changes[i]));
-        std::cout << "Written " << name.str() << std::endl;
+        char buf[256];
+        sprintf(buf, "%s_%03lu.nl", prefix.c_str(), i);
+        p.WriteNL(buf, &(changes[i]));
+        std::cout << "Written " << buf << std::endl;
     }
 }
 

@@ -1,4 +1,6 @@
 digraph dcbc {
+    graph [ dpi = 600 ];
+    
     subgraph cluster_registry {
         label="Registry node";
         node [shape=doubleoctagon];
