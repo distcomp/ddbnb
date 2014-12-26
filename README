@@ -4,6 +4,7 @@ CBC is a free open-source MILP solver from the COIN-OR suite
 (https://projects.coin-or.org/Cbc). DCBC is an Erlang-based system managing
 a set of CBC solver instances running together on a set of subproblems generated
 from a single MILP problem.
+SCIP is also an open-source MILP solver, http://scip.zib.de
 
 
 Executables
@@ -22,7 +23,7 @@ Starts an Erlang node managing registration of slave nodes. Only one registry
 node should be started. Its node@host should be set in the registry-node file.
 
 slave.sh [number of cpu]
-Starts an Erlang node which starts CBC solver instances. It should be started
+Starts an Erlang node which starts B&B solver instances. It should be started
 one per host.
 
 master.sh [solver options <-->] <list of .nl files of subproblems>
