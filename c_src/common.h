@@ -6,25 +6,25 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
-#include "solvers/util/problem.h"
+#include "asl/aslproblem.h"
 
-typedef std::vector<ampl::ProblemChanges> VecChanges;
+typedef std::vector<mp::ProblemChanges> VecChanges;
 
-void writeChanged(const std::string &prefix, ampl::Problem &p,
+void writeChanged(const std::string &prefix, mp::ASLProblem &p,
     VecChanges changes);
 
-const char *getVarType(const ampl::Problem &p, int variable);
+const char *getVarType(const mp::ASLProblem &p, int variable);
 
-bool isInteger(const ampl::Problem &p, int variable);
+bool isInteger(const mp::ASLProblem &p, int variable);
 
-VecChanges splitVariable(const ampl::Problem &p,
-    const ampl::ProblemChanges &changes, int var);
+VecChanges splitVariable(const mp::ASLProblem &p,
+    const mp::ProblemChanges &changes, int var);
 
-VecChanges splitVariableHalfs(ampl::Problem &p,
-    const ampl::ProblemChanges &changes, int var);
+VecChanges splitVariableHalfs(mp::ASLProblem &p,
+    const mp::ProblemChanges &changes, int var);
 
-VecChanges splitVariableArgv(ampl::Problem &p,
-    const ampl::ProblemChanges &changes, int argc, char **argv);
+VecChanges splitVariableArgv(mp::ASLProblem &p,
+    const mp::ProblemChanges &changes, int argc, char **argv);
 
 std::string baseNameNL(const char *name);
 

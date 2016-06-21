@@ -1,6 +1,6 @@
 ASL_HOME ?= ../ampl
-ASL_LIBS := -L$(ASL_HOME)/build/solvers $(ASL_HOME)/build/solvers/util/libutil.a -lamplsolver
-CPPFLAGS += -I$(ASL_HOME)/build/solvers -I$(ASL_HOME) -I$(ASL_HOME)/solvers
+ASL_LIBS := -L$(ASL_HOME)/build/lib -lasl -lmp
+CPPFLAGS += -I$(ASL_HOME)/include -I$(ASL_HOME)/src/asl/include -I$(ASL_HOME)/src/asl/solvers -I$(ASL_HOME)/build/src/asl -I$(ASL_HOME)/src
 
 CBC_HOME ?= /usr/local
 CBC_LIBS := $(shell env PKG_CONFIG_PATH=$(CBC_HOME)/lib/pkgconfig pkg-config --libs cbc)

@@ -5,7 +5,7 @@
 
 #include "common.h"
 
-#include "solvers/util/problem.h"
+#include "asl/aslproblem.h"
 #include <iostream>
 
 int main(int argc, char **argv)
@@ -17,7 +17,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    ampl::Problem p;
+    mp::ASLProblem p;
     p.Read(argv[1]);
     
     if (argc == 2)
@@ -25,7 +25,7 @@ int main(int argc, char **argv)
         std::cout << "VarN\tLB\tUB\tType" << std::endl;
         for (int i = 0; i < p.num_vars(); ++i)
         {
-            std::cout << i << "\t" << p.var_name(i) << "\t" << p.var_lb(i) << "\t" << p.var_ub(i) << "\t"
+            std::cout << i << "\t" << p.var_name(i) << "\t" << p.var_lb()[i] << "\t" << p.var_ub()[i] << "\t"
                       << getVarType(p, i) << std::endl;
         }
         return 0;
@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     argc -= 2;
     argv += 2;
 
-    VecChanges previous(1, ampl::ProblemChanges(p));
+    VecChanges previous(1, mp::ProblemChanges(p));
     while (argc >= 2)
     {
         VecChanges updated;

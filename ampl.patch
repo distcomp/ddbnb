@@ -1,13 +1,18 @@
-diff --git a/solvers/util/problem.h b/solvers/util/problem.h
-index 9a61364..221d18e 100644
---- a/solvers/util/problem.h
-+++ b/solvers/util/problem.h
-@@ -164,7 +164,7 @@ class Problem : Noncopyable {
+diff --git a/src/asl/aslproblem.h b/src/asl/aslproblem.h
+index 62c0dd2..488f0bb 100644
+--- a/src/asl/aslproblem.h
++++ b/src/asl/aslproblem.h
+@@ -287,11 +287,11 @@ class ASLProblem {
  
    // Frees all the arrays that were allocated by modifications to the problem.
    void Free();
 -
 +public:
    // Write an .nl file.
-   void WriteNL(fmt::StringRef stub, ProblemChanges *pc = 0, unsigned flags = 0);
- 
+   void WriteNL(fmt::CStringRef stub, ProblemChanges *pc = 0,
+                unsigned flags = 0);
+-
++private:
+   class Proxy {
+    private:
+     mutable ASL *asl_;

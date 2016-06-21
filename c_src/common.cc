@@ -8,9 +8,9 @@
 #include <iostream>
 #include <cmath>
 
-typedef std::vector<ampl::ProblemChanges> VecChanges;
+typedef std::vector<mp::ProblemChanges> VecChanges;
 
-void writeChanged(const std::string &prefix, ampl::Problem &p,
+void writeChanged(const std::string &prefix, mp::ASLProblem &p,
     VecChanges changes)
 {
     for (size_t i = 0; i < changes.size(); ++i)
@@ -28,58 +28,58 @@ void printLog(int i, int var, double lower, double upper)
               << " <= var(" << var << ") <= " << upper << std::endl;
 }
 
-const char *getVarType(const ampl::Problem &p, int variable)
+const char *getVarType(const mp::ASLProblem &p, int variable)
 {
-    if (p.var_type(variable) == ampl::CONTINUOUS)
+    if (p.var_type(variable) == mp::var::CONTINUOUS)
     {
         return "CONTINUOUS";
     }
     return "INTEGER";
 }
 
-bool isInteger(const ampl::Problem &p, int variable)
+bool isInteger(const mp::ASLProblem &p, int variable)
 {
-    return p.var_type(variable) == ampl::INTEGER;
+    return p.var_type(variable) == mp::var::INTEGER;
 }
 
-VecChanges splitVariable(const ampl::Problem &p,
-    const ampl::ProblemChanges &changes, int var)
+VecChanges splitVariable(const mp::ASLProblem &p,
+    const mp::ProblemChanges &changes, int var)
 {
-    int numValues = (int)(0.5 + (p.var_ub(var) - p.var_lb(var) + 1.));
-    VecChanges result(numValues, ampl::ProblemChanges(p));
+    int numValues = (int)(0.5 + (p.var_ub()[var] - p.var_lb()[var] + 1.));
+    VecChanges result(numValues, mp::ProblemChanges(p));
 
     std::vector<double> coefs(p.num_vars(), 0.);
     coefs[var] = 1.;
 
     for (int i = 0; i < numValues; ++i)
     {
-        result[i].AddCon(&(coefs[0]), p.var_lb(var) + i, p.var_lb(var) + i);
-        printLog(i, var, p.var_lb(var) + i, p.var_lb(var) + i);
+        result[i].AddCon(&(coefs[0]), p.var_lb()[var] + i, p.var_lb()[var] + i);
+        printLog(i, var, p.var_lb()[var] + i, p.var_lb()[var] + i);
     }
     return result;
 }
 
-VecChanges splitVariableHalfs(ampl::Problem &p,
-    const ampl::ProblemChanges &changes, int var)
+VecChanges splitVariableHalfs(mp::ASLProblem &p,
+    const mp::ProblemChanges &changes, int var)
 {
-    double middle = (p.var_ub(var) - p.var_lb(var)) / 2.;
-    double left = std::floor(p.var_lb(var) + middle);
-    double right = std::floor(p.var_lb(var) + middle + 1.);
+    double middle = (p.var_ub()[var] - p.var_lb()[var]) / 2.;
+    double left = std::floor(p.var_lb()[var] + middle);
+    double right = std::floor(p.var_lb()[var] + middle + 1.);
 
-    VecChanges result(2, ampl::ProblemChanges(p));
+    VecChanges result(2, mp::ProblemChanges(p));
     std::vector<double> coefs(p.num_vars(), 0.);
     coefs[var] = 1.;
 
-    result[0].AddCon(&(coefs[0]), p.var_lb(var), left);
-    printLog(0, var, p.var_lb(var), left);
-    result[1].AddCon(&(coefs[0]), right, p.var_ub(var));
-    printLog(0, var, right, p.var_ub(var));
+    result[0].AddCon(&(coefs[0]), p.var_lb()[var], left);
+    printLog(0, var, p.var_lb()[var], left);
+    result[1].AddCon(&(coefs[0]), right, p.var_ub()[var]);
+    printLog(0, var, right, p.var_ub()[var]);
 
     return result;
 }
 
-VecChanges splitVariableArgv(ampl::Problem &p,
-    const ampl::ProblemChanges &changes, int argc, char **argv)
+VecChanges splitVariableArgv(mp::ASLProblem &p,
+    const mp::ProblemChanges &changes, int argc, char **argv)
 {
     if (argc < 2)
     {
@@ -100,9 +100,9 @@ VecChanges splitVariableArgv(ampl::Problem &p,
 
     if (!strcmp(argv[0], "split"))
     {
-        return splitVariable(p, ampl::ProblemChanges(p), var);
+        return splitVariable(p, mp::ProblemChanges(p), var);
     }
-    return splitVariableHalfs(p, ampl::ProblemChanges(p), var);
+    return splitVariableHalfs(p, mp::ProblemChanges(p), var);
 }
 
 std::string baseNameNL(const char *name)
