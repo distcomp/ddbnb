@@ -13,6 +13,9 @@ deps:
 test: compile
 	$(MAKE) -C test
 
+install: c_src
+	cp -f c_src/cbc_port c_src/scip_port /usr/local/bin
+
 clean:
 	$(MAKE) -C test clean
 	$(MAKE) -C c_src clean

@@ -12,6 +12,13 @@ mkdir -p build
 cd build
 cmake ..
 make asl
+cd ../..
+
+if [[ -f /usr/local/src/reader_nl.tgz ]]; then
+    echo 'Found reader_nl.tgz, extracting...'
+    cd c_src
+    tar xzf /usr/local/src/reader_nl.tgz
+fi
 
 echo
 echo Done!

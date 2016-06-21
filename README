@@ -12,7 +12,7 @@ Executables
 c_src/cbc_port
 A port program for communicating with CBC from Erlang.
 
-c_src/cbc_port
+c_src/scip_port
 A port program for communicating with SCIP from Erlang.
 
 c_src/nlmod

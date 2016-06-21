@@ -7,22 +7,20 @@ CBC_LIBS := $(shell env PKG_CONFIG_PATH=$(CBC_HOME)/lib/pkgconfig pkg-config --l
 CPPFLAGS += -I$(CBC_HOME)/include/coin
 
 SCIP_HOME ?= /usr/local
-OSTYPE := $(shell uname -s | tr '[:upper:]' '[:lower:]')
-SCIP_LIBS ?= -L$(SCIP_HOME)/lib -lscipopt-3.1.0.$(OSTYPE).$(shell uname -m).gnu.opt \
-	-lz -lgmp -lreadline -lpthread
+SCIP_LIBS ?= -L$(SCIP_HOME)/lib -lscipopt -lipopt -lz -lgmp -lreadline -lpthread
 CPPFLAGS += -I$(SCIP_HOME)/include
 
 OPT := -O0 -g
 CXXFLAGS += $(OPT)
-CFLAGS += $(OPT) -std=c99
+CFLAGS += $(OPT)
 
 include ../rules.$(shell uname)
 
-all: cbc_port nlmod
+TARGETS := nlmod
+TARGETS += $(shell if scip -q -c quit; then echo scip_port; fi)
+TARGETS += $(shell if cbc quit > /dev/null; then echo cbc_port; fi)
 
-ifeq ($(USE_SCIP),true)
-all: scip_port
-endif
+all: $(TARGETS)
 
 cbc_port: cbc_port.o ErlPortInterface.o
 	$(CXX) -o $@ $(LDFLAGS) $^ $(CBC_LIBS)
