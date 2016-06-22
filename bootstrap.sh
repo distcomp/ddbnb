@@ -20,6 +20,9 @@ if [[ -f /usr/local/src/reader_nl.tgz ]]; then
     tar xzf /usr/local/src/reader_nl.tgz
 fi
 
+echo 'Downloading everest.py...'
+curl https://gitlab.com/everest/python-api/raw/master/everest.py > everest/everest.py
+
 echo
 echo Done!
 echo
