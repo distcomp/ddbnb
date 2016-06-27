@@ -13,7 +13,7 @@ def makeParser():
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-t', '--token', default='~/.everest_token',
                         help='token obtainable with everest.py')
-    parser.add_argument('-r', '--resources', nargs='+', default=['52eb8d4e420000f401166a2e'],
+    parser.add_argument('-r', '--resources', nargs='+', default=[],
                         help='everest resources to be used')
     parser.add_argument('-s', '--solver', default='scip', choices=['scip', 'cbc'],
                         help='solver to use')
@@ -46,9 +46,9 @@ def main(tmpDir):
         print 'No problem stubs specified'
         sys.exit(1)
 
-    if not args.resources:
-        print 'No resources specified'
-        sys.exit(1)
+    # if not args.resources:
+    #     print 'No resources specified'
+    #     sys.exit(1)
 
     if args.debug:
         tmpDir = 'debug'
@@ -73,7 +73,7 @@ def main(tmpDir):
     session = everest.Session('dcbc', 'https://everest.distcomp.org',
                               token=token)
     try:
-        psweep = everest.App('530f36d73d00002d04548b0e', session)
+        psweep = everest.App('57430c9c2b00004f3492590d', session)
 
         job = psweep.run({
             "plan": open(makeName('.plan'), 'rb'),
