@@ -33,6 +33,7 @@ def main0():
 def main(tmpDir):
     parser = makeParser()
     args = parser.parse_args()
+    d = os.path.dirname(__file__)
 
     with open(os.path.expanduser(args.token)) as f:
         token = f.read().strip()
@@ -61,9 +62,9 @@ def main(tmpDir):
         return os.path.join(tmpDir, 'out' + suffix)
 
     with ZipFile(makeName('.zip'), 'w') as z:
-        z.write('run-task.sh')
-        z.write('port_proxy.py')
-        z.write('task.py')
+        z.write(os.path.join(d, 'run-task.sh'), 'run-task.sh')
+        z.write(os.path.join(d, 'port_proxy.py'), 'port_proxy.py')
+        z.write(os.path.join(d, 'task.py'), 'task.py')
         for i, stub in enumerate(stubs):
             z.write(stub, 'stub%d.nl' % i)
 
