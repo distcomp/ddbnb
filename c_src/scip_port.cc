@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <string.h>
-
+#include <fstream>
 
 ErlPortInterface g_portInterface;
 
@@ -35,6 +35,8 @@ static SCIP_RETCODE run(const char *nlfile, const char *logFileName)
 
     SCIPprintExternalCodes(scip, NULL);
     SCIPinfoMessage(scip, NULL, "\n");
+
+    SCIPreadParams(scip, "scip.set");
 
     SCIP_CALL( SCIPreadProb(scip, nlfile, NULL) );
     SCIP_CALL( SCIPsolve(scip) );
@@ -94,6 +96,16 @@ int main(int argc, char **argv)
             ++p;
         }
     }
+
+    if (*p)
+    {
+        std::ofstream f("scip.set");
+        for (++p; *p; ++p)
+        {
+            f << *p << std::endl;
+        }
+    }
+
     
     if (haveInitialBestVal)
     {

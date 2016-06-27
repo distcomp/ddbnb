@@ -21,6 +21,7 @@ if [[ -f /usr/local/src/reader_nl.tgz ]]; then
 fi
 
 echo 'Downloading everest.py...'
+cd ..
 curl https://gitlab.com/everest/python-api/raw/master/everest.py > everest/everest.py
 
 echo

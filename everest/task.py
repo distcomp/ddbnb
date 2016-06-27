@@ -40,6 +40,9 @@ class Task:
     def run(self):
         solver = sys.argv[1]
         stub = sys.argv[2]
+        otherArgs = []
+        if len(sys.argv) > 3:
+            otherArgs = sys.argv[3:]
         args = [solver, stub, '-p']
         # time.sleep(random.uniform(1, 10))
 
@@ -51,6 +54,10 @@ class Task:
         if cur_record != "NULL":
             args.append('-b')
             args.append(cur_record)
+
+        if otherArgs:
+            args.append('--')
+            args.extend(otherArgs)
 
         self.solver = port_proxy.startSolver(args)
 

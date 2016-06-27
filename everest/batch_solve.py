@@ -17,6 +17,8 @@ def makeParser():
                         help='everest resources to be used')
     parser.add_argument('-s', '--solver', default='scip', choices=['scip', 'cbc'],
                         help='solver to use')
+    parser.add_argument('-p', '--parameters', default=[], nargs='+',
+                        help='solver parameters as k=v pairs')
     parser.add_argument('-i', '--input', type=argparse.FileType('rb'),
                         help='file with a list of input NL-files')
     parser.add_argument('-o', '--out-prefix', default='out', help='output prefix')
@@ -58,6 +60,12 @@ def main(tmpDir):
         except OSError:
             pass
 
+    params = ''
+    if args.parameters:
+        for p in args.parameters:
+            assert(not ' ' in p)
+        params = ' '.join(args.parameters)
+
     def makeName(suffix):
         return os.path.join(tmpDir, 'out' + suffix)
 
@@ -71,7 +79,7 @@ def main(tmpDir):
     with open(makeName('.plan'), 'wb') as f:
         f.write('parameter n from 0 to %d step 1\n' % (len(stubs) - 1))
         f.write('input_files run-task.sh task.py port_proxy.py stub${n}.nl\n')
-        f.write('command bash run-task.sh %s_port stub${n}.nl\n' % args.solver)
+        f.write('command bash run-task.sh %s_port stub${n}.nl %s\n' % (args.solver, params))
         f.write('output_files stub${n}.sol stderr stdout\n')
 
     session = everest.Session('dcbc', 'https://everest.distcomp.org',
