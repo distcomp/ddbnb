@@ -52,7 +52,10 @@ def main(tmpDir):
 
     if args.debug:
         tmpDir = 'debug'
-        os.mkdir(tmpDir)
+        try:
+            os.mkdir(tmpDir)
+        except OSError:
+            pass
 
     def makeName(suffix):
         return os.path.join(tmpDir, 'out' + suffix)
