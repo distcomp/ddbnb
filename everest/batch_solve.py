@@ -67,7 +67,7 @@ def main(tmpDir):
         params = ' '.join(args.parameters)
 
     def makeName(suffix):
-        return os.path.join(tmpDir, 'out' + suffix)
+        return os.path.join(tmpDir, args.out_prefix + suffix)
 
     with ZipFile(makeName('.zip'), 'w') as z:
         z.write(os.path.join(d, 'run-task.sh'), 'run-task.sh')
@@ -82,7 +82,7 @@ def main(tmpDir):
         f.write('command bash run-task.sh %s_port stub${n}.nl %s\n' % (args.solver, params))
         f.write('output_files stub${n}.sol stderr stdout\n')
 
-    session = everest.Session('dcbc', 'https://everest.distcomp.org',
+    session = everest.Session('dcbc - ' + args.out_prefix, 'https://everest.distcomp.org',
                               token=token)
     try:
         psweep = everest.App('57430c9c2b00004f3492590d', session)
