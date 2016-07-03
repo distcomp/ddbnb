@@ -19,6 +19,8 @@ def makeParser():
                         help='solver to use')
     parser.add_argument('-p', '--parameters', default=[], nargs='+',
                         help='solver parameters as k=v pairs')
+    parser.add_argument('-l', '--get-log', action='store_true',
+                        help='download job log')
     parser.add_argument('-i', '--input', type=argparse.FileType('rb'),
                         help='file with a list of input NL-files')
     parser.add_argument('-o', '--out-prefix', default='out', help='output prefix')
@@ -104,6 +106,9 @@ def main(tmpDir):
             sys.exit(1)
 
         session.getFile(result['results'], makeName('-results.zip'))
+        if args.get_log:
+            print "Downloading job's log..."
+            session.getJobLog(job.id, args.out_prefix + '.log')
 
         with ZipFile(makeName('-results.zip'), 'r') as z:
             solutions = []
