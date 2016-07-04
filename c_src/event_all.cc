@@ -54,7 +54,7 @@ public:
     }
     void acceptNewBestValue(double bestVal)
     {
-        assert(SCIP_OKAY == SCIPsetObjlimit(_scip, bestVal));
+        SCIPsetObjlimit(_scip, bestVal);
     }
 };
 
