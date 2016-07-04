@@ -9,6 +9,8 @@
 #include <string>
 #include <pthread.h>
 
+bool isBetter(double oldVal, double newVal);
+
 class BestValueAcceptor {
  public:
     virtual void acceptNewBestValue(double bestVal) = 0;

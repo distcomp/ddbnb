@@ -54,10 +54,7 @@ public:
     }
     void acceptNewBestValue(double bestVal)
     {
-        if (bestVal <= SCIPgetCutoffbound(_scip))
-        {
-            assert(SCIP_OKAY == SCIPupdateCutoffbound(_scip, bestVal));
-        }
+        assert(SCIP_OKAY == SCIPsetObjlimit(_scip, bestVal));
     }
 };
 
@@ -75,7 +72,7 @@ SCIP_DECL_EVENTEXEC(eventExecAll)
     if (SCIPeventGetType(event) ==  SCIP_EVENTTYPE_BESTSOLFOUND) {
         SCIPdebugMessage("exec method of event handler for best solution found\n");
         
-        g_portInterface.setBestValue(SCIPgetCutoffbound(scip), true);
+        g_portInterface.setBestValue(SCIPgetPrimalbound(scip), true);
     } else {
         SCIPBestValueAcceptor acceptor(scip);
         g_portInterface.getBestValue(acceptor);
