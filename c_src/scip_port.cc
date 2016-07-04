@@ -43,16 +43,23 @@ static SCIP_RETCODE run(const char *nlfile, const char *logFileName)
     
     SCIP_CALL( SCIPwriteAmplSolReaderNl(scip, NULL) );
 
+    SCIP_SOL *bestSol = SCIPgetBestSol(scip);
+    double bestVal = 1e23;
+    if (bestSol)
+    {
+        bestVal = SCIPgetSolOrigObj(scip, bestSol);
+    }
+
     switch (SCIPgetStatus(scip))
     {
     case SCIP_STATUS_OPTIMAL:
-        g_portInterface.writeResult("optimal", SCIPgetPrimalbound(scip));
+        g_portInterface.writeResult("optimal", bestVal);
         break;
     case SCIP_STATUS_INFEASIBLE:
-        g_portInterface.writeResult("infeasible", SCIPgetPrimalbound(scip));
+        g_portInterface.writeResult("infeasible", bestVal);
         break;
     default:
-        g_portInterface.writeResult("stopped", SCIPgetPrimalbound(scip));
+        g_portInterface.writeResult("stopped", bestVal);
     }
 
     SCIP_CALL( SCIPfree(&scip) );

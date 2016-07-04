@@ -16,7 +16,7 @@ SCIP_DECL_EVENTCOPY(eventCopyAll)
     assert(scip != NULL);
     assert(eventhdlr != NULL);
     assert(strcmp(SCIPeventhdlrGetName(eventhdlr), EVENTHDLR_NAME) == 0);
-    SCIP_CALL( SCIPincludeEventHdlrAll(scip) );
+    //SCIP_CALL( SCIPincludeEventHdlrAll(scip) );
     return SCIP_OKAY;
 }
 
@@ -61,9 +61,6 @@ public:
 static
 SCIP_DECL_EVENTEXEC(eventExecAll)
 {
-    SCIP_SOL* bestSol;
-    SCIP_Real solvalue;
-
     assert(eventhdlr != NULL);
     assert(strcmp(SCIPeventhdlrGetName(eventhdlr), EVENTHDLR_NAME) == 0);
     assert(event != NULL);
@@ -71,8 +68,7 @@ SCIP_DECL_EVENTEXEC(eventExecAll)
 
     if (SCIPeventGetType(event) ==  SCIP_EVENTTYPE_BESTSOLFOUND) {
         SCIPdebugMessage("exec method of event handler for best solution found\n");
-        
-        g_portInterface.setBestValue(SCIPgetPrimalbound(scip), true);
+        g_portInterface.setBestValue(SCIPgetSolOrigObj(scip, SCIPeventGetSol(event)), true);
     } else {
         SCIPBestValueAcceptor acceptor(scip);
         g_portInterface.getBestValue(acceptor);
