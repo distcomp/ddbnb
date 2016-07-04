@@ -2,7 +2,7 @@
 import os
 import sys
 import argparse
-from zipfile import ZipFile
+from zipfile import ZipFile, ZIP_DEFLATED
 import shutil
 import tempfile
 
@@ -71,7 +71,7 @@ def main(tmpDir):
     def makeName(suffix):
         return os.path.join(tmpDir, args.out_prefix + suffix)
 
-    with ZipFile(makeName('.zip'), 'w') as z:
+    with ZipFile(makeName('.zip'), 'w', ZIP_DEFLATED) as z:
         z.write(os.path.join(d, 'run-task.sh'), 'run-task.sh')
         z.write(os.path.join(d, 'port_proxy.py'), 'port_proxy.py')
         z.write(os.path.join(d, 'task.py'), 'task.py')
