@@ -42,8 +42,12 @@ Here we build and install special adapters to CBC and SCIP solvers to /usr/local
   ```
   git clone https://github.com/ssmir/dcbc.git
   ```
-2. Prepare subproblems and run:
+2. Make a token for dcbc:
+  ```
+  python dcbc/everest/everest.py get-token -u <EVEREST_LOGIN> -l dcbc-XXX > ~/.everest_token
+  ```
+3. Prepare subproblems and run:
   ```
   dcbc/everest/batch_solve.py stub1.nl stub2.nl
   ```
-3. To get help use dcbc/everest/batch_solve.py -h
+4. To get help use dcbc/everest/batch_solve.py -h
