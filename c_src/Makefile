@@ -8,7 +8,7 @@ CPPFLAGS += -I$(CBC_HOME)/include/coin
 
 SCIP_HOME ?= /usr/local
 SCIP_LIBS ?= -L$(SCIP_HOME)/lib -lscipopt -lipopt -lz -lgmp -lreadline -lpthread
-CPPFLAGS += -I$(SCIP_HOME)/include
+CPPFLAGS += -I$(SCIP_HOME)/include -D__STDC_CONSTANT_MACROS
 
 OPT := -O0 -g
 CXXFLAGS += $(OPT)
