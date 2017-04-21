@@ -66,10 +66,16 @@ SCIP_DECL_EVENTEXEC(eventExecAll)
     assert(event != NULL);
     assert(scip != NULL);
 
+    SCIP_STAGE stage = SCIPgetStage(scip);
+
     if (SCIPeventGetType(event) ==  SCIP_EVENTTYPE_BESTSOLFOUND) {
         SCIPdebugMessage("exec method of event handler for best solution found\n");
         g_portInterface.setBestValue(SCIPgetSolOrigObj(scip, SCIPeventGetSol(event)), true);
-    } else {
+    } else if (stage == SCIP_STAGE_PROBLEM || stage == SCIP_STAGE_TRANSFORMED ||
+        stage == SCIP_STAGE_INITPRESOLVE || stage == SCIP_STAGE_PRESOLVING ||
+        stage == SCIP_STAGE_EXITPRESOLVE || stage == SCIP_STAGE_PRESOLVED ||
+        stage == SCIP_STAGE_SOLVING)
+    {
         SCIPBestValueAcceptor acceptor(scip);
         g_portInterface.getBestValue(acceptor);
     }
