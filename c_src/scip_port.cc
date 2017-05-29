@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 {
     if (argc < 2)
     {
-        fprintf(stderr, "Usage: %s <AMPL stub path> [-p] [-o <log file>] [-b <best solution value>] [-- CBC args]\n", argv[0]);
+        fprintf(stderr, "Usage: %s <AMPL stub path> [-p] [-o <log file>] [-b <best solution value>] [-- SCIP args]\n", argv[0]);
         return 1;
     }
 
@@ -106,13 +106,13 @@ int main(int argc, char **argv)
 
     if (*p)
     {
-        std::ofstream f("scip.set");
-        for (++p; *p; ++p)
-        {
-            f << *p << std::endl;
-        }
+        ++p;
     }
-
+    std::ofstream f("scip.set");
+    for (; *p; ++p)
+    {
+        f << *p << std::endl;
+    }
     
     if (haveInitialBestVal)
     {

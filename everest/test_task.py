@@ -15,7 +15,7 @@ def main():
     sock.bind(('localhost', PORT))
     sock.listen(1)
 
-    p = subprocess.Popen(['python', 'task.py', 'cbc_port', '../test/BalanceTestDyn.nl'],
+    p = subprocess.Popen(['python', 'task.py', '../c_src/scip_port', '../test/BalanceTestDyn.nl'],
                          preexec_fn=os.setsid,
                          stdin=subprocess.PIPE)
 
