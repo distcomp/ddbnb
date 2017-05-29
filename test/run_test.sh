@@ -3,15 +3,15 @@ echo "Preparing problem..."
 ../c_src/nlmod BalanceTestDyn.nl split 120
 
 echo "Starting registry..."
-../registry.sh debug &
+../dcbc/registry.sh debug &
 sleep 1
 
 echo "Starting slave..."
-../slave.sh 2 debug &
+../dcbc/slave.sh 2 debug &
 sleep 1
 
 echo "Solving the problem..."
-../solve.sh BalanceTestDyn_*.nl
+../dcbc/solve.sh BalanceTestDyn_*.nl
 
-../stop-node.sh $(cat registry-node)
-../stop-node.sh slave@$(../my_ip.sh)
+../dcbc/stop-node.sh $(cat registry-node)
+../dcbc/stop-node.sh slave@$(../dcbc/my_ip.sh)

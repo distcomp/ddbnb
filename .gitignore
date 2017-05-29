@@ -8,3 +8,6 @@ c_src/*.o
 erl_crash.dump
 ebin
 .DS_Store
+everest/*.pyc
+everest/everest.py
+c_src/reader_nl.*

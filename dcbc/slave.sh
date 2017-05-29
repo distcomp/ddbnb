@@ -12,4 +12,4 @@ if [[ "$2" == "debug" ]]; then
 fi
 
 erl -pa $R/ebin -name slave@$($R/my_ip.sh) -boot start_sasl -s dcbc_app -config $R/slave.config \
-    -dcbc cbc_path  "\"$R/c_src/cbc_port\"" -dcbc num_cpu $NCPU -dcbc registry_node "'$(cat registry-node)'" $PARAM
+    -dcbc cbc_path  "\"$R/../c_src/cbc_port\"" -dcbc num_cpu $NCPU -dcbc registry_node "'$(cat registry-node)'" $PARAM
