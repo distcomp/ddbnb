@@ -60,7 +60,7 @@ Here we build and install special adapters to CBC and SCIP solvers to /usr/local
 
 ## External dependencies
 
-AMPL solver library (http://www.netlib.org/ampl/solvers/ or https://github.com/ampl/ampl)
-ASL util library by Victor Zverovich (https://github.com/ampl/ampl)
-CBC (https://projects.coin-or.org/Cbc)
-SCIP (http://scip.zib.de/)
+* AMPL solver library (http://www.netlib.org/ampl/solvers/ or https://github.com/ampl/ampl)
+* ASL util library by Victor Zverovich (https://github.com/ampl/ampl)
+* CBC (https://projects.coin-or.org/Cbc)
+* SCIP (http://scip.zib.de/)
