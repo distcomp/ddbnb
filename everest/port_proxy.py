@@ -1,6 +1,7 @@
 import os
 import time
 import struct
+import signal
 
 def readExact(fd, l):
     bufs = []
@@ -12,10 +13,13 @@ def readExact(fd, l):
         bufs.append(buf)
     return ''.join(bufs)
 
-def sendIncumbent((_, fd), value):
+def sendIncumbent((_, fd, cpid), value):
     msg = struct.pack('>HBd', 9, 1, value)
     wr = os.write(fd, msg)
     #assert(wr == len(msg))
+
+def stopSolver((_, fd, cpid)):
+    os.kill(cpid, signal.SIGINT)
 
 def startSolver(args):
     solver2proxyRead, solver2proxyWrite = os.pipe()
@@ -29,9 +33,9 @@ def startSolver(args):
         os.execvp(args[0], args)
     os.close(solver2proxyWrite)
     os.close(proxy2solverRead)
-    return (solver2proxyRead, proxy2solverWrite)
+    return (solver2proxyRead, proxy2solverWrite, cpid)
 
-def readFromSolver((solver2proxyRead, _)):
+def readFromSolver((solver2proxyRead, _, cpid)):
     buf = readExact(solver2proxyRead, 3)
     if not buf:
         return 'closed',
@@ -52,7 +56,11 @@ def main():
     sendIncumbent(solver, 4.0)
 
     while True:
-        got = readFromSolver(solver)
+        try:
+            got = readFromSolver(solver)
+        except KeyboardInterrupt:
+            print 'Got SIGINT, shutting down gracefully'
+            continue
         print got
         if got[0] == 'closed':
             break

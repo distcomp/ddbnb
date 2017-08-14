@@ -37,20 +37,28 @@ class Task:
         self.sock.settimeout(0.5)
         self.running = True
 
+    def getVarSync(self, name):
+        msg = "VAR_GET %s" % name
+        self.send_message(msg)
+        resp = self.receive_message()
+        assert(resp.split()[1] == name)
+        return resp.split()[2]
+
     def run(self):
         solver = sys.argv[1]
         stub = sys.argv[2]
-        otherArgs = []
-        if len(sys.argv) > 3:
-            otherArgs = sys.argv[3:]
+        self.stopMode = int(sys.argv[3])
+        otherArgs = sys.argv[4:]
         args = [solver, stub, '-p']
         # time.sleep(random.uniform(1, 10))
 
+        stopped = self.getVarSync('stopped') != 'NULL'
+        if self.stopMode and stopped:
+            self.sock.shutdown(socket.SHUT_WR)
+            return
+
         # get current record
-        msg = "VAR_GET record"
-        self.send_message(msg)
-        resp = self.receive_message()
-        cur_record = resp.split()[2]
+        cur_record = self.getVarSync('record')
         if cur_record != "NULL":
             args.append('-b')
             args.append(cur_record)
@@ -71,6 +79,9 @@ class Task:
                 print "Found new record: %f" % solverMsg[1]
                 msg = "VAR_SET_MD record %f" % solverMsg[1]
                 self.send_message(msg)
+                if self.stopMode and solverMsg[0] == 'result':
+                    print 'Got result, stopping other solvers...'
+                    self.send_message('VAR_SET_MD stopped 1')
             elif solverMsg[0] == 'closed':
                 self.running = False
                 self.sock.shutdown(socket.SHUT_WR)
@@ -101,6 +112,14 @@ class Task:
                     record = float(msg.split()[2])
                     port_proxy.sendIncumbent(self.solver, record)
                     print "Updated record: %f" % record
+                elif self.stopMode and msg.startswith('VAR_VALUE stopped'):
+                    assert(msg.split()[2] == '1')
+                    print "Got stop message. Stopping solver..."
+                    port_proxy.stopSolver(self.solver)
+                    print "Sent SIGINT to solver"
+                else:
+                    print 'Unknown message', msg
+                    assert(False)
             except socket.timeout:
                 pass
             except:

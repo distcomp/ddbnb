@@ -21,6 +21,8 @@ def makeParser():
                         help='solver parameters as k=v pairs')
     parser.add_argument('-l', '--get-log', action='store_true',
                         help='download job log')
+    parser.add_argument('-sm', '--stop-mode', type=int, default='0',
+                        help='0 - run until all tasks finish, 1 - run until any task finish, return best solution as result')
     parser.add_argument('-i', '--input', type=argparse.FileType('rb'),
                         help='file with a list of input NL-files')
     parser.add_argument('-o', '--out-prefix', default='out', help='output prefix')
@@ -81,7 +83,8 @@ def main(tmpDir):
     with open(makeName('.plan'), 'wb') as f:
         f.write('parameter n from 0 to %d step 1\n' % (len(stubs) - 1))
         f.write('input_files run-task.sh task.py port_proxy.py stub${n}.nl\n')
-        f.write('command bash run-task.sh %s_port stub${n}.nl %s\n' % (args.solver, params))
+        f.write('command bash run-task.sh %s_port stub${n}.nl %d %s\n' % (
+            args.solver, args.stop_mode, params))
         f.write('output_files stub${n}.sol stderr stdout\n')
 
     session = everest.Session('dcbc - ' + args.out_prefix, 'https://everest.distcomp.org',
