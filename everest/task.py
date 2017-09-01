@@ -48,7 +48,7 @@ class Task:
         solver = sys.argv[1]
         stub = sys.argv[2]
         self.stopMode = int(sys.argv[3])
-        otherArgs = sys.argv[4:]
+        paramsFile = sys.argv[4]
         args = [solver, stub, '-p']
         # time.sleep(random.uniform(1, 10))
 
@@ -63,6 +63,8 @@ class Task:
             args.append('-b')
             args.append(cur_record)
 
+        with open(paramsFile, 'r') as f:
+            otherArgs = f.read().split('\n')
         if otherArgs:
             args.append('--')
             args.extend(otherArgs)

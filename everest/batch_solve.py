@@ -19,8 +19,12 @@ def makeParser():
                         help='solver to use')
     parser.add_argument('-p', '--parameters', default=[], nargs='+',
                         help='solver parameters as k=v pairs')
+    parser.add_argument('-pf', '--parameters-file', action='append', default=[],
+                        help='files with solver parameters. Overrides -p params')
     parser.add_argument('-l', '--get-log', action='store_true',
                         help='download job log')
+    parser.add_argument('-ss', '--save-status', action='store_true',
+                        help='save solution status and objective value')
     parser.add_argument('-sm', '--stop-mode', type=int, default='0',
                         help='0 - run until all tasks finish, 1 - run until any task finish, return best solution as result')
     parser.add_argument('-i', '--input', type=argparse.FileType('rb'),
@@ -64,14 +68,16 @@ def main(tmpDir):
         except OSError:
             pass
 
-    params = ''
-    if args.parameters:
-        for p in args.parameters:
-            assert(not ' ' in p)
-        params = ' '.join(args.parameters)
-
     def makeName(suffix):
         return os.path.join(tmpDir, args.out_prefix + suffix)
+
+    paramsFiles = args.parameters_file
+    if not paramsFiles:
+        for p in args.parameters:
+            assert(not ' ' in p)
+        with open(makeName('params.txt'), 'w') as f:
+            f.write('\n'.join(args.parameters))
+        paramsFiles.append(makeName('params.txt'))
 
     with ZipFile(makeName('.zip'), 'w', ZIP_DEFLATED) as z:
         z.write(os.path.join(d, 'run-task.sh'), 'run-task.sh')
@@ -79,12 +85,15 @@ def main(tmpDir):
         z.write(os.path.join(d, 'task.py'), 'task.py')
         for i, stub in enumerate(stubs):
             z.write(stub, 'stub%d.nl' % i)
+        for i, params in enumerate(paramsFiles):
+            z.write(params, 'params%d.txt' % i)
 
     with open(makeName('.plan'), 'wb') as f:
         f.write('parameter n from 0 to %d step 1\n' % (len(stubs) - 1))
-        f.write('input_files run-task.sh task.py port_proxy.py stub${n}.nl\n')
-        f.write('command bash run-task.sh %s_port stub${n}.nl %d %s\n' % (
-            args.solver, args.stop_mode, params))
+        f.write('parameter p from 0 to %d step 1\n' % (len(paramsFiles) - 1))
+        f.write('input_files run-task.sh task.py port_proxy.py stub${n}.nl params${p}.txt\n')
+        f.write('command bash run-task.sh %s_port stub${n}.nl %d params${p}.txt\n' % (
+            args.solver, args.stop_mode))
         f.write('output_files stub${n}.sol stderr stdout\n')
 
     session = everest.Session('dcbc - ' + args.out_prefix, 'https://everest.distcomp.org',
@@ -107,15 +116,28 @@ def main(tmpDir):
             else:
                 print 'Job failed, no result available'
             sys.exit(1)
+        except KeyboardInterrupt:
+            print 'Cancelling the job...'
+            job.cancel()
+            try:
+                result = job.result()
+            except everest.JobException as e:
+                print e
+            return
 
         session.getFile(result['results'], makeName('-results.zip'))
         if args.get_log:
             print "Downloading job's log..."
             session.getJobLog(job.id, args.out_prefix + '.log')
 
+        stubs = {}
         with ZipFile(makeName('-results.zip'), 'r') as z:
             solutions = []
             for x in z.namelist():
+                if 'stub' in x:
+                    spl = x.split('/')
+                    stubs[spl[0]] = x
+                    continue
                 if not 'stderr' in x:
                     continue
                 err = z.read(x)
@@ -123,15 +145,15 @@ def main(tmpDir):
                 assert(len(result) == 1)
                 result = result[0].split()
                 spl = x.split('/')
-                n = int(spl[0])
-                spl[-1] = 'stub%d.sol' % n
-                solutions.append((float(result[-2].rstrip(',')), result[-1],
-                                  '/'.join(spl)))
+                solutions.append((float(result[-2].rstrip(',')), result[-1], spl[0]))
             best = min(solutions)
             print 'Best solution %f (%s) for %s saved to %s' % \
-                (best[0], best[1], best[2], args.out_prefix + '.sol')
+                (best[0], best[1], stubs[best[2]], args.out_prefix + '.sol')
             with open(args.out_prefix + '.sol', 'wb') as f:
-                f.write(z.read(best[2]))
+                f.write(z.read(stubs[best[2]]))
+            if args.save_status:
+                with open(args.out_prefix + '-status.txt', 'w') as f:
+                    f.write('%g\n%s\n' % (best[0], best[1]))
     finally:
         session.close()
 
