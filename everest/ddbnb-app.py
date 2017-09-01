@@ -14,7 +14,7 @@ test = int(sys.argv[3])
 if test:
     batchPath = '../batch_solve.py'
 else:
-    batchPath = '/home/ssmir/dcbc/everest/batch_solve.py'
+    batchPath = 'batch_solve.py'
 
 command = ['python2.7', batchPath, '-d', '-s', solver,
            '-o', name, '-i', 'inputs.txt', '-ss']
