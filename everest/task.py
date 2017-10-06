@@ -26,11 +26,12 @@ class Task:
 
     def __init__(self):
         port = int(os.environ['EVEREST_AGENT_PORT'])
+        address = os.environ['EVEREST_AGENT_ADDRESS']
         task_id = os.environ['EVEREST_AGENT_TASK_ID']
 
         # connect to agent
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect(('localhost', port))
+        self.sock.connect((address, port))
         print 'Connected to agent, setting message mode'
         self.sock.sendall(struct.pack('>Ib', len(task_id) + 1, 0))
         self.sock.sendall(task_id)
@@ -75,9 +76,11 @@ class Task:
         receiver = threading.Thread(target=self.receive_records)
         receiver.start()
 
+        hadSmth = False
         while self.running:
             solverMsg = port_proxy.readFromSolver(self.solver)
             if solverMsg[0] in ['incumbent', 'result']:
+                hadSmth = True
                 print "Found new record: %f" % solverMsg[1]
                 msg = "VAR_SET_MD record %f" % solverMsg[1]
                 self.send_message(msg)
@@ -85,6 +88,7 @@ class Task:
                     print 'Got result, stopping other solvers...'
                     self.send_message('VAR_SET_MD stopped 1')
             elif solverMsg[0] == 'closed':
+                assert hadSmth, 'No data from solver received'
                 self.running = False
                 self.sock.shutdown(socket.SHUT_WR)
                 receiver.join()

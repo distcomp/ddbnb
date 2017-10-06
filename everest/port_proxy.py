@@ -30,6 +30,7 @@ def startSolver(args):
         os.close(proxy2solverWrite)
         os.dup2(solver2proxyWrite, 4)
         os.dup2(proxy2solverRead, 3)
+        print 'Starting solver', args[0], args
         os.execvp(args[0], args)
     os.close(solver2proxyWrite)
     os.close(proxy2solverRead)
