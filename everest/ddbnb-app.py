@@ -55,6 +55,15 @@ if len(params) > 1 and len(inputs) == 1:
     command.append('-sm')
     command.append('1')
 
+resources = []
+if os.path.isfile('resources.json'):
+    with open('resources.json', 'r') as f:
+        resources = json.load(f)
+
+if resources:
+    command.append('-r')
+    command += resources
+
 if not test:
     token = os.environ.get('EVEREST_TASK_TOKEN', '')
     assert(token)
