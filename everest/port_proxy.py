@@ -6,7 +6,11 @@ import signal
 def readExact(fd, l):
     bufs = []
     while l > 0:
-        buf = os.read(fd, l)
+        try:
+            buf = os.read(fd, l)
+        except KeyboardInterrupt:
+            print 'port_proxy: KeyboardInterrupt received'
+            continue
         if not buf:
             break
         l -= len(buf)
