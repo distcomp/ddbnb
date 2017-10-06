@@ -17,7 +17,7 @@ else:
     batchPath = 'batch_solve.py'
 
 command = ['python2.7', batchPath, '-d', '-s', solver,
-           '-o', name, '-i', 'inputs.txt', '-ss']
+           '-o', name, '-i', 'inputs.txt', '-ss', '-l']
 
 with open('parameters.json', 'r') as f:
     params = json.load(f)
@@ -71,7 +71,7 @@ def makeName(suffix):
     return os.path.join('debug', name + suffix)
 
 os.rename(name + '.sol', 'solution.sol')
-#os.rename(name + '.log', 'everest.log')
+os.rename(name + '.log', 'everest.log')
 os.rename(os.path.join('debug', name + '-results.zip'), 'results.zip')
 
 with open(name + '-status.txt', 'r') as f:
