@@ -26,7 +26,7 @@ class Task:
 
     def __init__(self):
         port = int(os.environ['EVEREST_AGENT_PORT'])
-        address = os.environ['EVEREST_AGENT_ADDRESS']
+        address = os.environ.get('EVEREST_AGENT_ADDRESS', 'localhost')
         task_id = os.environ['EVEREST_AGENT_TASK_ID']
 
         # connect to agent
