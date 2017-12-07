@@ -3,6 +3,7 @@ import os
 import subprocess
 import json
 from zipfile import ZipFile
+from contextlib import closing
 
 name = sys.argv[1]
 assert(name)
@@ -38,7 +39,7 @@ for p in subproblems:
     inputs.append(n)
 
 if os.path.isfile('subproblems.zip'):
-    with ZipFile('subproblems.zip', 'r') as z:
+    with closing(ZipFile('subproblems.zip', 'r')) as z:
         for x in z.namelist():
             if not x.endswith('.nl') or '/' in x or '\\' in x:
                 continue
