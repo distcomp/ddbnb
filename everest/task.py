@@ -13,13 +13,12 @@ def recvExact(sock, l):
     while l > 0:
         try:
             buf = sock.recv(l)
+            if not buf:
+                break
+            l -= len(buf)
+            bufs.append(buf)
         except socket.timeout:
-            if not bufs:
-                raise
-        if not buf:
-            break
-        l -= len(buf)
-        bufs.append(buf)
+            pass
     return ''.join(bufs)
 
 class Task:
