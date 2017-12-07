@@ -6,6 +6,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 import shutil
 import tempfile
 
+import requests
 import everest
 
 def makeParser():
@@ -118,7 +119,12 @@ def main(tmpDir):
             sys.exit(1)
         except KeyboardInterrupt:
             print 'Cancelling the job...'
-            job.cancel()
+            try:
+                job.cancel()
+            except requests.exceptions.HTTPError as e:
+                sys.stderr.write('Response from the server: %s\n' % e.response.content)
+                sys.stderr.write('Headers of the request: %s\n' % e.request.headers)
+                raise
             try:
                 result = job.result()
             except everest.JobException as e:
