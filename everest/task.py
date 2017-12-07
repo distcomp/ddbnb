@@ -37,12 +37,25 @@ class Task:
         self.sock.settimeout(0.5)
         self.running = True
 
-    def getVarSync(self, name):
+    def requestVar(self, name):
         msg = "VAR_GET %s" % name
         self.send_message(msg)
-        resp = self.receive_message()
-        assert(resp.split()[1] == name)
-        return resp.split()[2]
+
+    def requestAndWaitVars(self):
+        self.requestVar('stopped')
+        self.requestVar('record')
+        values = {}
+        while True:
+            try:
+                resp = self.receive_message()
+            except socket.timeout:
+                continue
+            assert resp, 'Server connection closed'
+            assert(resp.split()[1] in ['stopped', 'record'])
+            values[resp.split()[1]] = resp.split()[2]
+            if len(values) == 2:
+                break
+        return values
 
     def run(self):
         solver = sys.argv[1]
@@ -52,13 +65,15 @@ class Task:
         args = [solver, stub, '-p']
         # time.sleep(random.uniform(1, 10))
 
-        stopped = self.getVarSync('stopped') != 'NULL'
+        # get current record and stop state
+        vals = self.requestAndWaitVars()
+
+        stopped = vals['stopped'] != 'NULL'
         if self.stopMode and stopped:
             self.sock.shutdown(socket.SHUT_WR)
             return
 
-        # get current record
-        cur_record = self.getVarSync('record')
+        cur_record = vals['record']
         if cur_record != "NULL":
             args.append('-b')
             args.append(cur_record)
