@@ -28,6 +28,8 @@ def makeParser():
                         help='save solution status and objective value')
     parser.add_argument('-sm', '--stop-mode', type=int, default='0',
                         help='0 - run until all tasks finish, 1 - run until any task finish, return best solution as result')
+    parser.add_argument('-ii', '--initial-incumbent', type=float, default='1e23',
+                        help='start task with initial incumbent')
     parser.add_argument('-i', '--input', type=argparse.FileType('rb'),
                         help='file with a list of input NL-files')
     parser.add_argument('-o', '--out-prefix', default='out', help='output prefix')
@@ -93,8 +95,8 @@ def main(tmpDir):
         f.write('parameter n from 0 to %d step 1\n' % (len(stubs) - 1))
         f.write('parameter p from 0 to %d step 1\n' % (len(paramsFiles) - 1))
         f.write('input_files run-task.sh task.py port_proxy.py stub${n}.nl params${p}.txt\n')
-        f.write('command bash run-task.sh %s_port stub${n}.nl %d params${p}.txt\n' % (
-            args.solver, args.stop_mode))
+        f.write('command bash run-task.sh %s_port stub${n}.nl %d params${p}.txt %g\n' % (
+            args.solver, args.stop_mode, args.initial_incumbent))
         f.write('output_files stub${n}.sol stderr stdout\n')
 
     session = everest.Session('dcbc - ' + args.out_prefix, 'https://everest.distcomp.org',

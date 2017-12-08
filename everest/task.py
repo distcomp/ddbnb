@@ -62,6 +62,7 @@ class Task:
         stub = sys.argv[2]
         self.stopMode = int(sys.argv[3])
         paramsFile = sys.argv[4]
+        initialIncumbent = float(sys.argv[5])
         args = [solver, stub, '-p']
         # time.sleep(random.uniform(1, 10))
 
@@ -75,8 +76,11 @@ class Task:
 
         cur_record = vals['record']
         if cur_record != "NULL":
+            initialIncumbent = min(initialIncumbent, float(cur_record))
+
+        if initialIncumbent < 1e22:
             args.append('-b')
-            args.append(cur_record)
+            args.append('%g' % initialIncumbent)
 
         with open(paramsFile, 'r') as f:
             otherArgs = f.read().split('\n')

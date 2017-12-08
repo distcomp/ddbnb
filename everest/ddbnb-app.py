@@ -9,8 +9,8 @@ name = sys.argv[1]
 assert(name)
 
 solver = sys.argv[2]
-
-test = int(sys.argv[3])
+incumbent = sys.argv[3]
+test = int(sys.argv[4])
 
 if test:
     batchPath = '../batch_solve.py'
@@ -18,7 +18,7 @@ else:
     batchPath = 'batch_solve.py'
 
 command = ['python2.7', batchPath, '-d', '-s', solver,
-           '-o', name, '-i', 'inputs.txt', '-ss', '-l']
+           '-o', name, '-i', 'inputs.txt', '-ss', '-l', '-ii', incumbent]
 
 with open('parameters.json', 'r') as f:
     params = json.load(f)
