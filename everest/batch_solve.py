@@ -5,6 +5,8 @@ import argparse
 from zipfile import ZipFile, ZIP_DEFLATED
 import shutil
 import tempfile
+from collections import defaultdict
+import json
 
 import requests
 import everest
@@ -82,11 +84,13 @@ def main(tmpDir):
             f.write('\n'.join(args.parameters))
         paramsFiles.append(makeName('params.txt'))
 
+    stubNames = {}
     with ZipFile(makeName('.zip'), 'w', ZIP_DEFLATED) as z:
         z.write(os.path.join(d, 'run-task.sh'), 'run-task.sh')
         z.write(os.path.join(d, 'port_proxy.py'), 'port_proxy.py')
         z.write(os.path.join(d, 'task.py'), 'task.py')
         for i, stub in enumerate(stubs):
+            stubNames['stub%d' % i] = os.path.basename(stub)
             z.write(stub, 'stub%d.nl' % i)
         for i, params in enumerate(paramsFiles):
             z.write(params, 'params%d.txt' % i)
@@ -116,6 +120,10 @@ def main(tmpDir):
             if 'result' in result:
                 print 'Job failed, result downloaded'
                 session.getFile(result['result']['results'], makeName('-results.zip'))
+                saveResults(makeName('-results.zip'), stubNames, args)
+                if args.get_log:
+                    print "Downloading job's log..."
+                    session.getJobLog(job.id, args.out_prefix + '.log')
             else:
                 print 'Job failed, no result available'
             sys.exit(1)
@@ -134,36 +142,79 @@ def main(tmpDir):
             return
 
         session.getFile(result['results'], makeName('-results.zip'))
+        saveResults(makeName('-results.zip'), stubNames, args)
         if args.get_log:
             print "Downloading job's log..."
             session.getJobLog(job.id, args.out_prefix + '.log')
-
-        stubs = {}
-        with ZipFile(makeName('-results.zip'), 'r') as z:
-            solutions = []
-            for x in z.namelist():
-                if 'stub' in x:
-                    spl = x.split('/')
-                    stubs[spl[0]] = x
-                    continue
-                if not 'stderr' in x:
-                    continue
-                err = z.read(x)
-                result = [l for l in err.split('\n') if 'sendResult' in l]
-                assert(len(result) == 1)
-                result = result[0].split()
-                spl = x.split('/')
-                solutions.append((float(result[-2].rstrip(',')), result[-1], spl[0]))
-            best = min(solutions)
-            print 'Best solution %f (%s) for %s saved to %s' % \
-                (best[0], best[1], stubs[best[2]], args.out_prefix + '.sol')
-            with open(args.out_prefix + '.sol', 'wb') as f:
-                f.write(z.read(stubs[best[2]]))
-            if args.save_status:
-                with open(args.out_prefix + '-status.txt', 'w') as f:
-                    f.write('%g\n%s\n' % (best[0], best[1]))
     finally:
         session.close()
+
+def saveResults(jobResults, stubNames, args):
+    jobs = defaultdict(dict)
+    with ZipFile(jobResults, 'r') as z:
+        for x in z.namelist():
+            if 'stub' in x:
+                jobId = x.split('/')[0]
+                stubId = os.path.splitext(x.split('/')[-1])[0]
+                jobs[jobId]['sol'] = z.read(x)
+                jobs[jobId]['stub'] = stubNames[stubId]
+                continue
+            if not 'stderr' in x:
+                continue
+            err = z.read(x)
+            hasResult = False
+            incumbents = [float(l.split()[-1]) for l in err.split('\n')
+                          if 'sendIncumbent' in l]
+            result = [l for l in err.split('\n') if 'sendResult' in l]
+            assert(len(result) <= 1)
+            hasResult = len(result) == 1
+            jobId = x.split('/')[0]
+            if hasResult:
+                result = result[0].split()
+                jobs[jobId]['val'] = float(result[-2].rstrip(','))
+                jobs[jobId]['status'] = result[-1]
+            elif len(incumbents) >= 1:
+                jobs[jobId]['val'] = min(incumbents)
+                jobs[jobId]['status'] = 'failed'
+
+    if not jobs:
+        print 'No incumbents or solutions in job results'
+        return
+
+    solutions = defaultdict(list)
+    for k, v in jobs.iteritems():
+        if 'sol' in v:
+            solutions[v['stub']].append(v)
+
+    infos = []
+    with ZipFile(args.out_prefix + '-solutions.zip', 'w') as z:
+        for stubId, stubName in stubNames.iteritems():
+            info = {'stub' : stubName, 'has_solution' : False}
+            if not stubName in solutions:
+                infos.append(info)
+                continue
+            best = min(solutions[stubName], key=lambda v: v['val'])
+            info['incumbent'] = best['val']
+            info['status'] = best['status']
+            info['has_solution'] = True
+            infos.append(info)
+            outName = stubName.replace('.nl', '.sol')
+            print 'Saving solution %s (%s) with incumbent %f' % (
+                outName, best['status'], best['val'])
+            z.writestr(outName, best['sol'])
+
+    withSol = [i for i in infos if i['has_solution']]
+    if not withSol:
+        print 'No solutions in job results'
+        return
+    best = min(withSol, key=lambda v: v['incumbent'])
+    print 'Best incumbent %f found for %s' % (best['incumbent'], best['stub'])
+
+    if args.save_status:
+        with open(args.out_prefix + '-status.txt', 'w') as f:
+            f.write('%g\n%s\n' % (best['incumbent'], best['status']))
+        with open(args.out_prefix + '-solutions.json', 'w') as f:
+            json.dump(infos, f, indent=4)
 
 if __name__ == "__main__":
     main0()

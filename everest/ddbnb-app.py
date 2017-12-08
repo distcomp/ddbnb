@@ -75,19 +75,29 @@ if not test:
 
 print command, inputs
 
-subprocess.check_call(command)
+retCode = 0
+try:
+    subprocess.check_call(command)
+except subprocess.CalledProcessError:
+    print 'batch_solve.py returned nonzero error code'
+    retCode = 1
 
-def makeName(suffix):
-    return os.path.join('debug', name + suffix)
+#os.rename(name + '.sol', 'solution.sol')
+if os.path.isfile(name + '.log'):
+    os.rename(name + '.log', 'everest.log')
+if os.path.isfile(os.path.join('debug', name + '-results.zip')):
+    os.rename(os.path.join('debug', name + '-results.zip'), 'results.zip')
+if os.path.isfile(name + '-solutions.zip'):
+    os.rename(name + '-solutions.zip', 'solutions.zip')
+if os.path.isfile(name + '-solutions.json'):
+    os.rename(name + '-solutions.json', 'solutions.json')
 
-os.rename(name + '.sol', 'solution.sol')
-os.rename(name + '.log', 'everest.log')
-os.rename(os.path.join('debug', name + '-results.zip'), 'results.zip')
+if os.path.isfile(name + '-status.txt'):
+    with open(name + '-status.txt', 'r') as f:
+        lines = f.read().split('\n')
+    with open('objective.txt', 'w') as f:
+        f.write('%s' % lines[0])
+    with open('status.txt', 'w') as f:
+        f.write('%s' % lines[1])
 
-with open(name + '-status.txt', 'r') as f:
-    lines = f.read().split('\n')
-with open('objective.txt', 'w') as f:
-    f.write('%s' % lines[0])
-with open('status.txt', 'w') as f:
-    f.write('%s' % lines[1])
-
+exit(retCode)
