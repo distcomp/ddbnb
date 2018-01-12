@@ -43,7 +43,8 @@ def startSolver(args):
 def readFromSolver((solver2proxyRead, _, cpid)):
     buf = readExact(solver2proxyRead, 3)
     if not buf:
-        return 'closed',
+        p, exitcode = os.waitpid(cpid, 0)
+        return 'closed', exitcode
     bodyLen, msgType = struct.unpack('>HB', buf)
     buf = readExact(solver2proxyRead, bodyLen-1)
     if msgType == 3:

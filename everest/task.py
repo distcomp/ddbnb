@@ -110,7 +110,7 @@ class Task:
                 self.running = False
                 self.sock.shutdown(socket.SHUT_WR)
                 receiver.join()
-                print 'Finished'
+                print 'Finished', solverMsg
 
     def send_message(self, msg):
         self.sock.sendall(struct.pack('>I', len(msg)))
