@@ -101,7 +101,7 @@ def main(tmpDir):
         f.write('input_files run-task.sh task.py port_proxy.py stub${n}.nl params${p}.txt\n')
         f.write('command bash run-task.sh %s_port stub${n}.nl %d params${p}.txt %g\n' % (
             args.solver, args.stop_mode, args.initial_incumbent))
-        f.write('output_files stub${n}.sol stderr stdout\n')
+        f.write('output_files stub${n}.sol stderr stdout.tgz\n')
 
     session = everest.Session('dcbc - ' + args.out_prefix, 'https://everest.distcomp.org',
                               token=token)
