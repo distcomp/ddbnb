@@ -7,8 +7,10 @@ CBC_LIBS := $(shell env PKG_CONFIG_PATH=$(CBC_HOME)/lib/pkgconfig pkg-config --l
 CPPFLAGS += -I$(CBC_HOME)/include/coin
 
 SCIP_HOME ?= /usr/local
+SCIP_SRC ?= /usr/local/src/scip
 SCIP_LIBS ?= -L$(SCIP_HOME)/lib -lscipopt -lipopt -lz -lgmp -lreadline -lpthread
 CPPFLAGS += -I$(SCIP_HOME)/include -D__STDC_CONSTANT_MACROS
+CPPFLAGS += -I$(SCIP_SRC)/src -I$(SCIP_SRC)/interfaces/ampl/src
 
 OPT := -O0 -g
 CXXFLAGS += $(OPT)
@@ -32,6 +34,9 @@ nlmod: nlmod.o common.o
 	$(CXX) -o $@ $(LDFLAGS) $^ $(ASL_LIBS)
 
 common.o: common.cc common.h
+
+reader_nl.o : $(SCIP_SRC)/interfaces/ampl/src/reader_nl.c
+	$(CXX) -c -o $@ $(CXXFLAGS) $(CPPFLAGS) $<
 
 clean:
 	rm -f *.o cbc_port scip_port nlmod

@@ -30,7 +30,9 @@ Here we build and install special adapters to CBC and SCIP solvers to /usr/local
   git clone https://github.com/distcomp/ddbnb.git
   ```
 2. Build scip_port and cbc_port
-  * Copy reader_nl.c and reader_nl.h from interfaces/ampl/src directory of SCIP sources to c_src
+  * Copy SCIP source code directory (scipoptsuite-x.x.x/scip) to
+    /usr/local/src/scip (or specify its path on Make's command line as
+    SCIP_SRC=...)
   * From the project's root directory:
   ```
   ./bootstrap.sh

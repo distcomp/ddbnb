@@ -14,12 +14,6 @@ cmake ..
 make asl
 cd ../..
 
-if [[ -f /usr/local/src/reader_nl.tgz ]]; then
-    echo 'Found reader_nl.tgz, extracting...'
-    cd c_src
-    tar xzf /usr/local/src/reader_nl.tgz
-fi
-
 echo 'Downloading everest.py...'
 cd ..
 curl https://gitlab.com/everest/python-api/raw/master/everest.py > everest/everest.py
