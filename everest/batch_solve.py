@@ -5,7 +5,7 @@ import argparse
 from zipfile import ZipFile, ZIP_DEFLATED
 import shutil
 import tempfile
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import json
 
 import requests
@@ -84,7 +84,7 @@ def main(tmpDir):
             f.write('\n'.join(args.parameters))
         paramsFiles.append(makeName('params.txt'))
 
-    stubNames = {}
+    stubNames = OrderedDict()
     with ZipFile(makeName('.zip'), 'w', ZIP_DEFLATED) as z:
         z.write(os.path.join(d, 'run-task.sh'), 'run-task.sh')
         z.write(os.path.join(d, 'port_proxy.py'), 'port_proxy.py')
@@ -189,7 +189,8 @@ def saveResults(jobResults, stubNames, args):
     infos = []
     with ZipFile(args.out_prefix + '-solutions.zip', 'w') as z:
         for stubId, stubName in stubNames.iteritems():
-            info = {'stub' : stubName, 'has_solution' : False}
+            info = {'stub' : stubName, 'has_solution' : False,
+                    'taskNum' : int(stubId.strip('stub'))}
             if not stubName in solutions:
                 infos.append(info)
                 continue
@@ -199,8 +200,8 @@ def saveResults(jobResults, stubNames, args):
             info['has_solution'] = True
             infos.append(info)
             outName = stubName.replace('.nl', '.sol')
-            print 'Saving solution %s (%s) with incumbent %f' % (
-                outName, best['status'], best['val'])
+            print 'Saving solution %s (%s) for task %d with incumbent %f' % (
+                outName, best['status'], info['taskNum'], best['val'])
             z.writestr(outName, best['sol'])
 
     withSol = [i for i in infos if i['has_solution']]
