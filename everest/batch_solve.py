@@ -166,13 +166,22 @@ def saveResults(jobResults, stubNames, args):
             incumbents = [float(l.split()[-1]) for l in err.split('\n')
                           if 'sendIncumbent' in l]
             result = [l for l in err.split('\n') if 'sendResult' in l]
+            solHeader = [l for l in err.split('\n') if 'solutionHeader' in l]
             assert(len(result) <= 1)
             hasResult = len(result) == 1
             jobId = x.split('/')[0]
             if hasResult:
                 result = result[0].split()
+                status = result[-1]
+                if solHeader:
+                    hdr = solHeader[0].split(':')[1].strip()
+                    hdr = hdr.split(',')[0].split()
+                    if 'CBC' in solHeader[0]:
+                        status = ' '.join(hdr[2:])
+                    else:
+                        status = ' '.join(hdr)
                 jobs[jobId]['val'] = float(result[-2].rstrip(','))
-                jobs[jobId]['status'] = result[-1]
+                jobs[jobId]['status'] = status
             elif len(incumbents) >= 1:
                 jobs[jobId]['val'] = min(incumbents)
                 jobs[jobId]['status'] = 'failed'

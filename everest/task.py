@@ -102,6 +102,10 @@ class Task:
                 print "Found new record: %f" % solverMsg[1]
                 msg = "VAR_SET_MD record %f" % solverMsg[1]
                 self.send_message(msg)
+                if solverMsg[0] == 'result':
+                    with open(os.path.splitext(stub)[0] + '.sol', 'r') as f:
+                        firstLine = f.readline()
+                    sys.stderr.write(">>> solutionHeader: %s\n" % firstLine)
                 if self.stopMode and solverMsg[0] == 'result':
                     print 'Got result, stopping other solvers...'
                     self.send_message('VAR_SET_MD stopped 1')
