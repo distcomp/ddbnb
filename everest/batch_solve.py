@@ -156,8 +156,10 @@ def saveResults(jobResults, stubNames, args):
             if 'stub' in x:
                 jobId = x.split('/')[0]
                 stubId = os.path.splitext(x.split('/')[-1])[0]
-                jobs[jobId]['sol'] = z.read(x)
-                jobs[jobId]['stub'] = stubNames[stubId]
+                solution = z.read(x)
+                if solution:
+                    jobs[jobId]['sol'] = solution
+                    jobs[jobId]['stub'] = stubNames[stubId]
                 continue
             if not 'stderr' in x:
                 continue

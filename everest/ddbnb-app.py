@@ -52,7 +52,7 @@ with open('inputs.txt', 'w') as f:
     for i in inputs:
         f.write('%s\n' % i)
 
-if len(params) > 1 and len(inputs) == 1:
+if len(params) > 1:
     command.append('-sm')
     command.append('1')
 

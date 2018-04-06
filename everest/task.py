@@ -42,7 +42,7 @@ class Task:
         self.send_message(msg)
 
     def requestAndWaitVars(self):
-        self.requestVar('stopped')
+        self.requestVar(self.stoppedVar)
         self.requestVar('record')
         values = {}
         while True:
@@ -51,7 +51,8 @@ class Task:
             except socket.timeout:
                 continue
             assert resp, 'Server connection closed'
-            assert(resp.split()[1] in ['stopped', 'record'])
+            if not resp.split()[1] in [self.stoppedVar, 'record']:
+                continue
             values[resp.split()[1]] = resp.split()[2]
             if len(values) == 2:
                 break
@@ -66,12 +67,15 @@ class Task:
         args = [solver, stub, '-p']
         # time.sleep(random.uniform(1, 10))
 
+        self.stoppedVar = os.path.splitext(stub)[0] + '_stopped'
+
         # get current record and stop state
         vals = self.requestAndWaitVars()
 
-        stopped = vals['stopped'] != 'NULL'
+        stopped = vals[self.stoppedVar] != 'NULL'
         if self.stopMode and stopped:
             self.sock.shutdown(socket.SHUT_WR)
+            os.mknod(os.path.splitext(stub)[0] + '.sol')
             return
 
         cur_record = vals['record']
@@ -108,7 +112,7 @@ class Task:
                     sys.stderr.write(">>> solutionHeader: %s\n" % firstLine)
                 if self.stopMode and solverMsg[0] == 'result':
                     print 'Got result, stopping other solvers...'
-                    self.send_message('VAR_SET_MD stopped 1')
+                    self.send_message('VAR_SET_MD %s 1' % self.stoppedVar)
             elif solverMsg[0] == 'closed':
                 assert hadSmth, 'No data from solver received'
                 self.running = False
@@ -126,7 +130,7 @@ class Task:
             return ''
         size, = struct.unpack('>I', header)
         msg = recvExact(self.sock, size)
-        print "Received message: %s" % msg
+        print "%s Received message: %s" % (time.ctime(), msg)
         return msg
 
     def receive_records(self):
@@ -140,11 +144,13 @@ class Task:
                     record = float(msg.split()[2])
                     port_proxy.sendIncumbent(self.solver, record)
                     print "Updated record: %f" % record
-                elif self.stopMode and msg.startswith('VAR_VALUE stopped'):
+                elif self.stopMode and msg.startswith('VAR_VALUE %s' % self.stoppedVar):
                     assert(msg.split()[2] == '1')
                     print "Got stop message. Stopping solver..."
                     port_proxy.stopSolver(self.solver)
                     print "Sent SIGINT to solver"
+                elif self.stopMode and msg.startswith('VAR_VALUE') and 'stopped' in msg:
+                    print 'Got stopped message for other stub:', msg
                 else:
                     print 'Unknown message', msg
                     assert(False)
