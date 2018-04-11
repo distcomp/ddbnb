@@ -205,8 +205,12 @@ def saveResults(jobResults, stubNames, args):
     infos = []
     with ZipFile(args.out_prefix + '-solutions.zip', 'w') as z:
         for stubId, stubName in stubNames.iteritems():
-            info = {'stub' : stubName, 'has_solution' : False,
-                    'taskNum' : int(stubId.strip('stub'))}
+            info = {
+                'stub' : stubName,
+                'has_solution' : False,
+                'taskNum' : int(stubId.strip('stub')),
+                'solver' : args.solver
+            }
             if not stubName in solutions:
                 infos.append(info)
                 continue
