@@ -35,6 +35,7 @@ def makeParser():
     parser.add_argument('-i', '--input', type=argparse.FileType('rb'),
                         help='file with a list of input NL-files')
     parser.add_argument('-o', '--out-prefix', default='out', help='output prefix')
+    parser.add_argument('-ur', '--use-results', help='Skip parameter sweep run by using already computed results')
     parser.add_argument('file', nargs='*', default=[], help='input NL-files')
     return parser
 
@@ -102,6 +103,10 @@ def main(tmpDir):
         f.write('command bash run-task.sh %s_port stub${n}.nl %d params${p}.txt %g\n' % (
             args.solver, args.stop_mode, args.initial_incumbent))
         f.write('output_files stub${n}.sol stderr stdout.tgz\n')
+
+    if not args.use_results is None:
+        saveResults(args.use_results, stubNames, args)
+        return
 
     session = everest.Session('dcbc - ' + args.out_prefix, 'https://everest.distcomp.org',
                               token=token)
