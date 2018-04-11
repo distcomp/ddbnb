@@ -91,6 +91,8 @@ if os.path.isfile(name + '-solutions.zip'):
     os.rename(name + '-solutions.zip', 'solutions.zip')
 if os.path.isfile(name + '-solutions.json'):
     os.rename(name + '-solutions.json', 'solutions.json')
+if os.path.isfile(name + '-incumbent-no-sol.txt'):
+    os.rename(name + '-incumbent-no-sol.txt', 'incumbent-no-sol.txt')
 
 if os.path.isfile(name + '-status.txt'):
     with open(name + '-status.txt', 'r') as f:

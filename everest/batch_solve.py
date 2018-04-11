@@ -224,6 +224,11 @@ def saveResults(jobResults, stubNames, args):
                 outName, best['status'], info['taskNum'], best['val'])
             z.writestr(outName, best['sol'])
 
+    incumbentNoSol = min([v['val'] for v in jobs.values() if 'val' in v])
+    if args.save_status:
+        with open(args.out_prefix + '-incumbent-no-sol.txt', 'w') as f:
+            f.write('%g' % incumbentNoSol)
+
     withSol = [i for i in infos if i['has_solution']]
     if not withSol:
         print 'No solutions in job results'
