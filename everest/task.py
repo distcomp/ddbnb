@@ -114,7 +114,8 @@ class Task:
                     print 'Got result, stopping other solvers...'
                     self.send_message('VAR_SET_MD %s 1' % self.stoppedVar)
             elif solverMsg[0] == 'closed':
-                assert hadSmth, 'No data from solver received'
+                if not hadSmth:
+                    print 'Warning: No data from solver received'
                 self.running = False
                 self.sock.shutdown(socket.SHUT_WR)
                 receiver.join()
