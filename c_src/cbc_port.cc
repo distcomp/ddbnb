@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <signal.h>
 
 #include "CbcModel.hpp"
 #include "OsiClpSolverInterface.hpp"
@@ -130,6 +131,8 @@ void *pipeReaderLoop(void *arg)
 
 int main(int argc, char **argv)
 {
+    signal(SIGINT, SIG_IGN);
+
     if (argc < 2)
     {
         fprintf(stderr, "Usage: %s <AMPL stub path> [-p] [-o <log file>] [-b <best solution value>] [-- CBC args]\n", argv[0]);

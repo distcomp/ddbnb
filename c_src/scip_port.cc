@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <fstream>
+#include <signal.h>
 
 ErlPortInterface g_portInterface;
 
@@ -69,6 +70,8 @@ static SCIP_RETCODE run(const char *nlfile, const char *logFileName)
 
 int main(int argc, char **argv)
 {
+    signal(SIGINT, SIG_IGN);
+
     if (argc < 2)
     {
         fprintf(stderr, "Usage: %s <AMPL stub path> [-p] [-o <log file>] [-b <best solution value>] [-- SCIP args]\n", argv[0]);
