@@ -135,6 +135,9 @@ class Task:
         return msg
 
     def receive_records(self):
+        killing = False
+        nextKill = None
+        killDelay = 1
         while self.running:
             try:
                 msg = self.receive_message()
@@ -147,6 +150,8 @@ class Task:
                     print "Updated record: %f" % record
                 elif self.stopMode and msg.startswith('VAR_VALUE %s' % self.stoppedVar):
                     assert(msg.split()[2] == '1')
+                    killing = True
+                    nextKill = time.time() + killDelay
                     print "Got stop message. Stopping solver..."
                     port_proxy.stopSolver(self.solver)
                     print "Sent SIGINT to solver"
@@ -156,7 +161,10 @@ class Task:
                     print 'Unknown message', msg
                     assert(False)
             except socket.timeout:
-                pass
+                if killing and time.time() >= nextKill:
+                    nextKill = time.time() + killDelay
+                    port_proxy.stopSolver(self.solver)
+                    print "Sent SIGINT to solver"
             except:
                 self.running = False
                 raise

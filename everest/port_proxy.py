@@ -28,6 +28,7 @@ def stopSolver((_, fd, cpid)):
 def startSolver(args):
     solver2proxyRead, solver2proxyWrite = os.pipe()
     proxy2solverRead, proxy2solverWrite = os.pipe()
+    old = signal.signal(signal.SIGINT, signal.SIG_IGN)
     cpid = os.fork()
     if not cpid:
         os.close(solver2proxyRead)
@@ -36,6 +37,7 @@ def startSolver(args):
         os.dup2(proxy2solverRead, 3)
         print 'Starting solver', args[0], args
         os.execvp(args[0], args)
+    signal.signal(signal.SIGINT, old)
     os.close(solver2proxyWrite)
     os.close(proxy2solverRead)
     return (solver2proxyRead, proxy2solverWrite, cpid)
