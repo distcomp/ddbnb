@@ -28,6 +28,8 @@ class Task:
         address = os.environ.get('EVEREST_AGENT_ADDRESS', 'localhost')
         task_id = os.environ['EVEREST_AGENT_TASK_ID']
 
+        sys.stderr.write(">>> hostname: %s\n" % socket.gethostname())
+
         # connect to agent
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((address, port))
@@ -119,6 +121,7 @@ class Task:
                 self.running = False
                 self.sock.shutdown(socket.SHUT_WR)
                 receiver.join()
+                sys.stderr.write(">>> solver_exitcode: %s\n" % solverMsg[1])
                 print 'Finished', solverMsg
                 return solverMsg[1]
         return 0
