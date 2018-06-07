@@ -120,6 +120,8 @@ class Task:
                 self.sock.shutdown(socket.SHUT_WR)
                 receiver.join()
                 print 'Finished', solverMsg
+                return solverMsg[1]
+        return 0
 
     def send_message(self, msg):
         self.sock.sendall(struct.pack('>I', len(msg)))
@@ -176,7 +178,7 @@ class Task:
 def main():
     task = Task()
     try:
-        task.run()
+        return task.run()
     finally:
         task.shutdown()
 
