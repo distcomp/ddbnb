@@ -18,7 +18,7 @@ def makeParser():
                         help='token obtainable with everest.py')
     parser.add_argument('-r', '--resources', nargs='+', default=[],
                         help='everest resources to be used')
-    parser.add_argument('-s', '--solver', default='scip', choices=['scip', 'cbc'],
+    parser.add_argument('-s', '--solver', default='scip', choices=['scip', 'cbc', 'scip_bundle'],
                         help='solver to use')
     parser.add_argument('-p', '--parameters', default=[], nargs='+',
                         help='solver parameters as k=v pairs')
@@ -85,11 +85,17 @@ def main(tmpDir):
             f.write('\n'.join(args.parameters))
         paramsFiles.append(makeName('params.txt'))
 
+    inputFiles = ['run-task.sh', 'task.py', 'port_proxy.py']
+    if args.solver == 'scip_bundle':
+        inputFiles.append('scip_port')
+        solver = './scip_port'
+    else:
+        solver = '%s_port' % args.solver
+
     stubNames = OrderedDict()
     with ZipFile(makeName('.zip'), 'w', ZIP_DEFLATED) as z:
-        z.write(os.path.join(d, 'run-task.sh'), 'run-task.sh')
-        z.write(os.path.join(d, 'port_proxy.py'), 'port_proxy.py')
-        z.write(os.path.join(d, 'task.py'), 'task.py')
+        for f in inputFiles:
+            z.write(os.path.join(d, f), f)
         for i, stub in enumerate(stubs):
             stubNames['stub%d' % i] = os.path.basename(stub)
             z.write(stub, 'stub%d.nl' % i)
@@ -99,9 +105,9 @@ def main(tmpDir):
     with open(makeName('.plan'), 'wb') as f:
         f.write('parameter n from 0 to %d step 1\n' % (len(stubs) - 1))
         f.write('parameter p from 0 to %d step 1\n' % (len(paramsFiles) - 1))
-        f.write('input_files run-task.sh task.py port_proxy.py stub${n}.nl params${p}.txt\n')
-        f.write('command bash run-task.sh %s_port stub${n}.nl %d params${p}.txt %g\n' % (
-            args.solver, args.stop_mode, args.initial_incumbent))
+        f.write('input_files stub${n}.nl params${p}.txt %s\n' % ' '.join(inputFiles))
+        f.write('command bash run-task.sh %s stub${n}.nl %d params${p}.txt %g\n' % (
+            solver, args.stop_mode, args.initial_incumbent))
         f.write('output_files stub${n}.sol stderr stdout.tgz\n')
 
     if not args.use_results is None:
