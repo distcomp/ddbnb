@@ -172,8 +172,8 @@ def parseJobLog(logFile, tasksRes, args):
     for taskId, task in tasksRaw:
         jobId, taskNum, restartNum = tuple(taskId.split('-'))
         taskTimes[taskNum].append({'start_time' : task['start'],
-                                   'stop_time' : task['end'],
-                                   'resource_id' : task['resourceId'],
+                                   'stop_time' : task.get('end'),
+                                   'resource_id' : task.get('resourceId'),
                                    'has_solution' : False,
                                    'status' : 'failed',
                                    'task_id' : taskId})
