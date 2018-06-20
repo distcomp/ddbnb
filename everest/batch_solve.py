@@ -7,6 +7,9 @@ import shutil
 import tempfile
 from collections import defaultdict, OrderedDict
 import json
+import calendar
+import time
+import string
 
 import requests
 import everest
@@ -111,7 +114,9 @@ def main(tmpDir):
         f.write('output_files stub${n}.sol stderr stdout.tgz\n')
 
     if not args.use_results is None:
-        saveResults(args.use_results, stubNames, args)
+        tasksRes = saveResults(args.use_results, stubNames, args)
+        if args.get_log:
+            parseJobLog(args.out_prefix + '.log', tasksRes, args)
         return
 
     session = everest.Session('dcbc - ' + args.out_prefix, 'https://everest.distcomp.org',
@@ -153,14 +158,83 @@ def main(tmpDir):
             return
 
         session.getFile(result['results'], makeName('-results.zip'))
-        saveResults(makeName('-results.zip'), stubNames, args)
+        tasksRes = saveResults(makeName('-results.zip'), stubNames, args)
         if args.get_log:
             print "Downloading job's log..."
             session.getJobLog(job.id, args.out_prefix + '.log')
+            parseJobLog(args.out_prefix + '.log', tasksRes, args)
     finally:
         session.close()
 
+def parseJobLog(logFile, tasksRes, args):
+    tasksRaw = sorted(parseFile(logFile)['tasks'].items())
+    taskTimes = defaultdict(list)
+    for taskId, task in tasksRaw:
+        jobId, taskNum, restartNum = tuple(taskId.split('-'))
+        taskTimes[taskNum].append({'start_time' : task['start'],
+                                   'stop_time' : task['end'],
+                                   'resource_id' : task['resourceId'],
+                                   'has_solution' : False,
+                                   'status' : 'failed',
+                                   'task_id' : taskId})
+    tasks = OrderedDict()
+    for taskNum, task in sorted(tasksRes.items()):
+        for i, t in enumerate(taskTimes[taskNum]):
+            if 'stub' in task:
+                t['stub'] = task['stub']
+            tasks[t['task_id']] = t
+            del t['task_id']
+        taskTimes[taskNum][-1].update(task)
+    if args.save_status:
+        with open(args.out_prefix + '-tasks.json', 'w') as f:
+            json.dump(tasks, f, indent=4)
+
+def tsStrToSeconds(s):
+    return calendar.timegm(time.strptime(s[:s.find('.')], '%Y-%m-%d %H:%M:%S'))
+
+def parseFile(fileName):
+    result = {'tasks' : {}}
+    firstLine = True
+    with open(fileName, 'r') as f:
+        for l in f.readlines():
+            timestamp = tsStrToSeconds(' '.join(l.split()[:2]))
+            if firstLine:
+                firstLine = False
+                result['jobSubmitTS'] = timestamp
+
+            if not 'Received' in l or not 'TASK_STATE' in l:
+                continue
+            start = string.find(l, '["T')
+            msg = json.loads(l[start:])
+            status = msg[2]
+
+            if status == 'RUNNING':
+                result['taskStartTS'] = timestamp
+                result['tasks'][msg[1]] = {'start' : timestamp}
+            elif status == 'COMPLETED':
+                result['taskCompletedTS'] = timestamp
+                result['tasks'][msg[1]]['end'] = timestamp
+
+            if not status in ['DONE', 'FAILED']:
+                continue
+
+            result['tasks'][msg[1]]['status'] = status
+            result['tasks'][msg[1]].update(msg[3])
+            result.update(msg[3])
+            result['status'] = status
+            result['networkTime'] = result['stageInTime'] + result['stageOutTime']
+            for s in map(lambda s: s.strip(), l.split()):
+                if s[0] == '[' and '/' in s:
+                    result['resourceId'] = s.strip('[]').split('/')[0]
+                    result['tasks'][msg[1]]['resourceId'] = s.strip('[]').split('/')[0]
+                    break
+
+    result['jobDoneTS'] = timestamp
+    result['jobSeconds'] = result['jobDoneTS'] - result['jobSubmitTS']
+    return result
+
 def saveResults(jobResults, stubNames, args):
+    OTHER_FIELDS = ['hostname', 'solver_exitcode']
     jobs = defaultdict(dict)
     with ZipFile(jobResults, 'r') as z:
         for x in z.namelist():
@@ -174,15 +248,25 @@ def saveResults(jobResults, stubNames, args):
                 continue
             if not 'stderr' in x:
                 continue
-            err = z.read(x)
+            jobId = x.split('/')[0]
+            err = z.read(x).split('\n')
             hasResult = False
-            incumbents = [float(l.split()[-1]) for l in err.split('\n')
+            incumbents = [float(l.split()[-1]) for l in err
                           if 'sendIncumbent' in l]
-            result = [l for l in err.split('\n') if 'sendResult' in l]
-            solHeader = [l for l in err.split('\n') if 'solutionHeader' in l]
+            result = [l for l in err if 'sendResult' in l]
+            solHeader = [l for l in err if 'solutionHeader' in l]
+            for otherField in OTHER_FIELDS:
+                lines = [l for l in err if otherField in l]
+                if not lines:
+                    continue
+                value = lines[0].split()[-1]
+                try:
+                    value = int(value)
+                except ValueError:
+                    pass
+                jobs[jobId][otherField] = value
             assert(len(result) <= 1)
             hasResult = len(result) == 1
-            jobId = x.split('/')[0]
             if hasResult:
                 result = result[0].split()
                 status = result[-1]
@@ -207,6 +291,9 @@ def saveResults(jobResults, stubNames, args):
     for k, v in jobs.iteritems():
         if 'sol' in v:
             solutions[v['stub']].append(v)
+            v['has_solution'] = True
+        else:
+            v['has_solution'] = False
 
     infos = []
     with ZipFile(args.out_prefix + '-solutions.zip', 'w') as z:
@@ -247,6 +334,12 @@ def saveResults(jobResults, stubNames, args):
             f.write('%g\n%s\n' % (best['incumbent'], best['status']))
         with open(args.out_prefix + '-solutions.json', 'w') as f:
             json.dump(infos, f, indent=4)
+        for k, v in jobs.iteritems():
+            if 'sol' in v:
+                del v['sol']
+        with open(args.out_prefix + '-tasks.json', 'w') as f:
+            json.dump(jobs, f, indent=4)
+    return jobs
 
 if __name__ == "__main__":
     main0()
