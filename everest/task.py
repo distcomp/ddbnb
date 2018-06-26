@@ -163,8 +163,7 @@ class Task:
                 elif self.stopMode and msg.startswith('VAR_VALUE') and 'stopped' in msg:
                     print 'Got stopped message for other stub:', msg
                 else:
-                    print 'Unknown message', msg
-                    assert(False)
+                    assert False, 'Unknown message: %s' % msg
             except socket.timeout:
                 if killing and time.time() >= nextKill:
                     nextKill = time.time() + killDelay
