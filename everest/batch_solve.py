@@ -285,7 +285,7 @@ def saveResults(jobResults, stubNames, args):
 
     if not jobs:
         print 'No incumbents or solutions in job results'
-        return
+        return jobs
 
     solutions = defaultdict(list)
     for k, v in jobs.iteritems():
@@ -317,15 +317,15 @@ def saveResults(jobResults, stubNames, args):
                 outName, best['status'], info['taskNum'], best['val'])
             z.writestr(outName, best['sol'])
 
-    incumbentNoSol = min([v['val'] for v in jobs.values() if 'val' in v])
-    if args.save_status:
+    vals = [v['val'] for v in jobs.values() if 'val' in v]
+    if args.save_status and vals:
         with open(args.out_prefix + '-incumbent-no-sol.txt', 'w') as f:
-            f.write('%g' % incumbentNoSol)
+            f.write('%g' % min(vals))
 
     withSol = [i for i in infos if i['has_solution']]
     if not withSol:
         print 'No solutions in job results'
-        return
+        return jobs
     best = min(withSol, key=lambda v: v['incumbent'])
     print 'Best incumbent %f found for %s' % (best['incumbent'], best['stub'])
 
