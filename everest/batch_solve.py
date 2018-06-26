@@ -10,6 +10,7 @@ import json
 import calendar
 import time
 import string
+import re
 
 import requests
 import everest
@@ -171,7 +172,7 @@ def parseJobLog(logFile, tasksRes, args):
     taskTimes = defaultdict(list)
     for taskId, task in tasksRaw:
         jobId, taskNum, restartNum = tuple(taskId.split('-'))
-        taskTimes[taskNum].append({'start_time' : task['start'],
+        taskTimes[taskNum].append({'start_time' : task.get('start', task.get('end')),
                                    'stop_time' : task.get('end'),
                                    'resource_id' : task.get('resourceId'),
                                    'has_solution' : False,
@@ -193,44 +194,39 @@ def tsStrToSeconds(s):
     return calendar.timegm(time.strptime(s[:s.find('.')], '%Y-%m-%d %H:%M:%S'))
 
 def parseFile(fileName):
-    result = {'tasks' : {}}
-    firstLine = True
+    result = {'tasks' : defaultdict(dict)}
     with open(fileName, 'r') as f:
         for l in f.readlines():
             timestamp = tsStrToSeconds(' '.join(l.split()[:2]))
-            if firstLine:
-                firstLine = False
-                result['jobSubmitTS'] = timestamp
+            if 'Received' in l and 'TASK_STATE' in l:
+                start = string.find(l, '["T')
+                msg = json.loads(l[start:])
+                status = msg[2]
 
-            if not 'Received' in l or not 'TASK_STATE' in l:
-                continue
-            start = string.find(l, '["T')
-            msg = json.loads(l[start:])
-            status = msg[2]
+                if status == 'RUNNING':
+                    result['tasks'][msg[1]]['start'] = timestamp
+                elif status == 'COMPLETED':
+                    result['tasks'][msg[1]]['end'] = timestamp
+                elif status in ['DONE', 'FAILED'] and not 'end' in result['tasks'][msg[1]]:
+                    result['tasks'][msg[1]]['end'] = timestamp
 
-            if status == 'RUNNING':
-                result['taskStartTS'] = timestamp
-                result['tasks'][msg[1]] = {'start' : timestamp}
-            elif status == 'COMPLETED':
-                result['taskCompletedTS'] = timestamp
-                result['tasks'][msg[1]]['end'] = timestamp
+                if not status in ['DONE', 'FAILED']:
+                    continue
 
-            if not status in ['DONE', 'FAILED']:
-                continue
-
-            result['tasks'][msg[1]]['status'] = status
-            result['tasks'][msg[1]].update(msg[3])
-            result.update(msg[3])
-            result['status'] = status
-            result['networkTime'] = result['stageInTime'] + result['stageOutTime']
-            for s in map(lambda s: s.strip(), l.split()):
-                if s[0] == '[' and '/' in s:
-                    result['resourceId'] = s.strip('[]').split('/')[0]
-                    result['tasks'][msg[1]]['resourceId'] = s.strip('[]').split('/')[0]
-                    break
-
-    result['jobDoneTS'] = timestamp
-    result['jobSeconds'] = result['jobDoneTS'] - result['jobSubmitTS']
+                result['tasks'][msg[1]]['status'] = status
+                result['tasks'][msg[1]].update(msg[3])
+                for s in map(lambda s: s.strip(), l.split()):
+                    if s[0] == '[' and '/' in s:
+                        result['resourceId'] = s.strip('[]').split('/')[0]
+                        result['tasks'][msg[1]]['resourceId'] = s.strip('[]').split('/')[0]
+                        break
+            elif 'Task' in l and 'FAILED' in l:
+                m = re.search('Task ([a-z0-9-]+):', l)
+                if m and not 'end' in result['tasks'][m.group(1)]:
+                    result['tasks'][m.group(1)]['end'] = timestamp
+                    mm = re.search('esource ([a-z0-9]+),', l)
+                    if mm and not 'resourceId' in result['tasks'][m.group(1)]:
+                        result['tasks'][m.group(1)]['resourceId'] = mm.group(1)
     return result
 
 def saveResults(jobResults, stubNames, args):
