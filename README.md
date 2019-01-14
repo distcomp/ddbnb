@@ -62,7 +62,8 @@ Here we build and install special adapters to CBC and SCIP solvers to /usr/local
 
 ## External dependencies
 
-* AMPL solver library (http://www.netlib.org/ampl/solvers/ or https://github.com/ampl/ampl)
+* Everest cloud platform (http://everest.distcomp.org/)
+* AMPL solver library (http://www.netlib.org/ampl/solvers/ or https://github.com/ampl/ampl) 
 * ASL util library by Victor Zverovich (https://github.com/ampl/ampl)
 * CBC (https://projects.coin-or.org/Cbc)
 * SCIP (http://scip.zib.de/)
