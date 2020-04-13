@@ -10,7 +10,8 @@ assert(name)
 
 solver = sys.argv[2]
 incumbent = sys.argv[3]
-test = int(sys.argv[4])
+jobId = sys.argv[4]
+test = int(sys.argv[5])
 
 if test:
     batchPath = '../batch_solve.py'
@@ -72,6 +73,10 @@ if not test:
         f.write(token)
     command.append('-t')
     command.append('token.txt')
+
+if jobId:
+    command.append('--job')
+    command.append(jobId)
 
 print command, inputs
 

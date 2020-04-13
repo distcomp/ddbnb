@@ -40,6 +40,7 @@ def makeParser():
                         help='file with a list of input NL-files')
     parser.add_argument('-o', '--out-prefix', default='out', help='output prefix')
     parser.add_argument('-ur', '--use-results', help='Skip parameter sweep run by using already computed results')
+    parser.add_argument('--job', help='Skip parameter sweep run by downloading results from a completed job')
     parser.add_argument('file', nargs='*', default=[], help='input NL-files')
     return parser
 
@@ -97,6 +98,7 @@ def main(tmpDir):
         solver = '%s_port' % args.solver
 
     stubNames = OrderedDict()
+    paramNames = OrderedDict()
     with ZipFile(makeName('.zip'), 'w', ZIP_DEFLATED) as z:
         for f in inputFiles:
             z.write(os.path.join(d, f), f)
@@ -104,6 +106,7 @@ def main(tmpDir):
             stubNames['stub%d' % i] = os.path.basename(stub)
             z.write(stub, 'stub%d.nl' % i)
         for i, params in enumerate(paramsFiles):
+            paramNames[i] = os.path.basename(params)
             z.write(params, 'params%d.txt' % i)
 
     with open(makeName('.plan'), 'wb') as f:
@@ -115,7 +118,7 @@ def main(tmpDir):
         f.write('output_files stub${n}.sol stderr stdout.tgz\n')
 
     if not args.use_results is None:
-        tasksRes = saveResults(args.use_results, stubNames, args)
+        tasksRes = saveResults(args.use_results, stubNames, paramNames, args)
         if args.get_log:
             parseJobLog(args.out_prefix + '.log', tasksRes, args)
         return
@@ -125,24 +128,36 @@ def main(tmpDir):
     try:
         psweep = everest.App('57430c9c2b00004f3492590d', session)
 
-        job = psweep.run({
-            "plan": open(makeName('.plan'), 'rb'),
-            "files": open(makeName('.zip'), 'rb')
-        }, args.resources)
+        if not args.job:
+            job = psweep.run({
+                "plan": open(makeName('.plan'), 'rb'),
+                "files": open(makeName('.zip'), 'rb')
+            }, args.resources)
+            jobId = job.id
+        else:
+            jobId = args.job
+
+        def handleJobStatus(result):
+            if 'result' in result:
+                print 'Result downloaded'
+                session.getFile(result['result']['results'], makeName('-results.zip'))
+                tasksRes = saveResults(makeName('-results.zip'), stubNames, paramNames, args)
+                if args.get_log:
+                    print "Downloading job's log..."
+                    session.getJobLog(jobId, args.out_prefix + '.log')
+                    parseJobLog(args.out_prefix + '.log', tasksRes, args)
+            else:
+                print 'No result available'
+
+        if args.job:
+            handleJobStatus(session.getJobStatus(jobId))
+            sys.exit(0)
 
         try:
             result = job.result()
         except everest.JobException:
-            result = session.getJobStatus(job.id)
-            if 'result' in result:
-                print 'Job failed, result downloaded'
-                session.getFile(result['result']['results'], makeName('-results.zip'))
-                saveResults(makeName('-results.zip'), stubNames, args)
-                if args.get_log:
-                    print "Downloading job's log..."
-                    session.getJobLog(job.id, args.out_prefix + '.log')
-            else:
-                print 'Job failed, no result available'
+            print 'Job failed'
+            handleJobStatus(session.getJobStatus(jobId))
             sys.exit(1)
         except KeyboardInterrupt:
             print 'Cancelling the job...'
@@ -158,12 +173,7 @@ def main(tmpDir):
                 print e
             return
 
-        session.getFile(result['results'], makeName('-results.zip'))
-        tasksRes = saveResults(makeName('-results.zip'), stubNames, args)
-        if args.get_log:
-            print "Downloading job's log..."
-            session.getJobLog(job.id, args.out_prefix + '.log')
-            parseJobLog(args.out_prefix + '.log', tasksRes, args)
+        handleJobStatus({'result' : result})
     finally:
         session.close()
 
@@ -229,7 +239,7 @@ def parseFile(fileName):
                         result['tasks'][m.group(1)]['resourceId'] = mm.group(1)
     return result
 
-def saveResults(jobResults, stubNames, args):
+def saveResults(jobResults, stubNames, paramNames, args):
     OTHER_FIELDS = ['hostname', 'solver_exitcode']
     jobs = defaultdict(dict)
     with ZipFile(jobResults, 'r') as z:
@@ -240,12 +250,17 @@ def saveResults(jobResults, stubNames, args):
                 solution = z.read(x)
                 if solution:
                     jobs[jobId]['sol'] = solution
-                    jobs[jobId]['stub'] = stubNames[stubId]
+                jobs[jobId]['stub'] = stubNames[stubId]
+                continue
+            if 'parameters' in x:
+                jobId = x.split('/')[0]
+                pairs = dict([tuple(l.split(' = ')) for l in z.read(x).split('\n') if '=' in l])
+                jobs[jobId]['params'] = paramNames[int(pairs['p'])]
                 continue
             if not 'stderr' in x:
                 continue
             jobId = x.split('/')[0]
-            err = z.read(x).split('\n')
+            err = [l for l in z.read(x).split('\n') if l.startswith('>>>')]
             hasResult = False
             incumbents = [float(l.split()[-1]) for l in err
                           if 'sendIncumbent' in l]
@@ -292,7 +307,7 @@ def saveResults(jobResults, stubNames, args):
             v['has_solution'] = False
 
     infos = []
-    with ZipFile(args.out_prefix + '-solutions.zip', 'w') as z:
+    with ZipFile(args.out_prefix + '-solutions.zip', 'w', ZIP_DEFLATED) as z:
         for stubId, stubName in stubNames.iteritems():
             info = {
                 'stub' : stubName,
