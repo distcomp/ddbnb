@@ -3,7 +3,6 @@
 
 #include "scip/scip.h"
 
-EXTERN
 SCIP_RETCODE SCIPincludeEventHdlrAll(SCIP *scip);
 
 
