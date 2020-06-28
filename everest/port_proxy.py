@@ -17,15 +17,19 @@ def readExact(fd, l):
         bufs.append(buf)
     return ''.join(bufs)
 
-def sendIncumbent((_, fd, cpid), value):
-    msg = struct.pack('>HBd', 9, 1, value)
+def sendIncumbent((_, fd, cpid), value, seq):
+    msg = struct.pack('>HBdH', 11, 1, value, seq)
     wr = os.write(fd, msg)
     #assert(wr == len(msg))
 
 def stopSolver((_, fd, cpid)):
     os.kill(cpid, signal.SIGINT)
 
-def startSolver(args):
+def startSolver(args, fork=True):
+    if not fork:
+        print 'Starting solver', args[0], args
+        os.execvp(args[0], args)
+        return
     solver2proxyRead, solver2proxyWrite = os.pipe()
     proxy2solverRead, proxy2solverWrite = os.pipe()
     old = signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -50,7 +54,7 @@ def readFromSolver((solver2proxyRead, _, cpid)):
     bodyLen, msgType = struct.unpack('>HB', buf)
     buf = readExact(solver2proxyRead, bodyLen-1)
     if msgType == 3:
-        incumbent, = struct.unpack('>d', buf)
+        incumbent, seqNumber = struct.unpack('>dH', buf)
         return 'incumbent', incumbent
     elif msgType == 2:
         statusLen = bodyLen - 9
@@ -58,10 +62,12 @@ def readFromSolver((solver2proxyRead, _, cpid)):
         return 'result', incumbent, status
 
 def main():
-    solver = startSolver(['../c_src/cbc_port', '../test/BalanceTestDyn.nl',
-                          '-p'])#, '-q', '-o', 'test.log'])
-
-    sendIncumbent(solver, 4.0)
+    fork = os.environ.get("OMPI_COMM_WORLD_RANK", "0") == "0"
+    solver = startSolver(['./bin/parascip', 'parascip.set', '../../BalanceTestDyn_000.cip', '-q'],
+                         fork)
+                          #'bin/cbc_port', '../test/BalanceTestDyn.nl',
+                          #'-p'])#, '-q', '-o', 'test.log'])
+    sendIncumbent(solver, 3.91, 0)
 
     while True:
         try:
