@@ -64,7 +64,7 @@ def main(tmpDir):
         stubs.extend(args.input.read().split())
     stubs.extend(args.file)
 
-    if not stubs:
+    if not stubs and not args.job:
         print 'No problem stubs specified'
         sys.exit(1)
 
@@ -103,7 +103,7 @@ def main(tmpDir):
         for f in inputFiles:
             z.write(os.path.join(d, f), f)
         for i, stub in enumerate(stubs):
-            stubNames['stub%d' % i] = os.path.basename(stub)
+            stubNames[i] = os.path.basename(stub)
             z.write(stub, 'stub%d.nl' % i)
         for i, params in enumerate(paramsFiles):
             paramNames[i] = os.path.basename(params)
@@ -195,6 +195,7 @@ def parseJobLog(logFile, tasksRes, args):
                 t['stub'] = task['stub']
             tasks[t['task_id']] = t
             del t['task_id']
+
         taskTimes[taskNum][-1].update(task)
     if args.save_status:
         with open(args.out_prefix + '-tasks.json', 'w') as f:
@@ -242,20 +243,23 @@ def parseFile(fileName):
 def saveResults(jobResults, stubNames, paramNames, args):
     OTHER_FIELDS = ['hostname', 'solver_exitcode']
     jobs = defaultdict(dict)
+    stubsFound = {}
     with ZipFile(jobResults, 'r') as z:
         for x in z.namelist():
             if 'stub' in x:
                 jobId = x.split('/')[0]
-                stubId = os.path.splitext(x.split('/')[-1])[0]
+                #stubId = os.path.splitext(x.split('/')[-1])[0]
                 solution = z.read(x)
                 if solution:
                     jobs[jobId]['sol'] = solution
-                jobs[jobId]['stub'] = stubNames[stubId]
+                #jobs[jobId]['stub'] = stubNames[stubId]
                 continue
             if 'parameters' in x:
                 jobId = x.split('/')[0]
                 pairs = dict([tuple(l.split(' = ')) for l in z.read(x).split('\n') if '=' in l])
-                jobs[jobId]['params'] = paramNames[int(pairs['p'])]
+                jobs[jobId]['params'] = paramNames.get(int(pairs['p']), pairs['p'])
+                jobs[jobId]['stub'] = stubNames.get(int(pairs['n']), pairs['n'])
+                stubsFound[pairs['n']] = jobs[jobId]['stub']
                 continue
             if not 'stderr' in x:
                 continue
@@ -308,7 +312,7 @@ def saveResults(jobResults, stubNames, paramNames, args):
 
     infos = []
     with ZipFile(args.out_prefix + '-solutions.zip', 'w', ZIP_DEFLATED) as z:
-        for stubId, stubName in stubNames.iteritems():
+        for stubId, stubName in stubsFound.iteritems():
             info = {
                 'stub' : stubName,
                 'has_solution' : False,
