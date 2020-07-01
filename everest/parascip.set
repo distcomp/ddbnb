@@ -1,0 +1,11 @@
+Quiet = FALSE                
+LogSolvingStatusFilePath = "./logs/"
+LogNodesTransferFilePath = "./logs/"
+CheckpointFilePath = "./logs/"
+SolutionFilePath = "./logs/"
+NotificationInterval = 10
+
+LogSolvingStatus = TRUE
+
+Checkpoint = TRUE
+CheckpointInterval = 1800

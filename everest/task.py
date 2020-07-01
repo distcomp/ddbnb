@@ -21,22 +21,41 @@ def recvExact(sock, l):
             pass
     return ''.join(bufs)
 
+def startSolver(initialIncumbent, fork=True):
+    solver = sys.argv[1]
+    stub = sys.argv[2]
+    paramsFile = sys.argv[4]
+    args = [solver, stub, '-p']
+    if initialIncumbent < 1e22:
+        args.append('-b')
+        args.append('%g' % initialIncumbent)
+
+    with open(paramsFile, 'r') as f:
+        otherArgs = f.read().split('\n')
+    if otherArgs:
+        args.append('--')
+        args.extend(otherArgs)
+
+    return port_proxy.startSolver(args, fork)
+
 class Task:
 
     def __init__(self):
-        port = int(os.environ['EVEREST_AGENT_PORT'])
+        port = int(os.environ.get('EVEREST_AGENT_PORT', 0))
         address = os.environ.get('EVEREST_AGENT_ADDRESS', 'localhost')
-        task_id = os.environ['EVEREST_AGENT_TASK_ID']
+        task_id = os.environ.get('EVEREST_AGENT_TASK_ID')
 
         sys.stderr.write(">>> hostname: %s\n" % socket.gethostname())
 
         # connect to agent
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((address, port))
-        print 'Connected to agent, setting message mode'
-        self.sock.sendall(struct.pack('>Ib', len(task_id) + 1, 0))
-        self.sock.sendall(task_id)
-        self.sock.settimeout(0.5)
+        self.sock = None
+        if port:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.connect((address, port))
+            print 'Connected to agent, setting message mode'
+            self.sock.sendall(struct.pack('>Ib', len(task_id) + 1, 0))
+            self.sock.sendall(task_id)
+            self.sock.settimeout(0.5)
         self.running = True
 
     def requestVar(self, name):
@@ -44,6 +63,11 @@ class Task:
         self.send_message(msg)
 
     def requestAndWaitVars(self):
+        if not self.sock:
+            return {
+                self.stoppedVar : 'NULL',
+                'record' : '1e30'
+            }
         self.requestVar(self.stoppedVar)
         self.requestVar('record')
         values = {}
@@ -61,12 +85,9 @@ class Task:
         return values
 
     def run(self):
-        solver = sys.argv[1]
         stub = sys.argv[2]
         self.stopMode = int(sys.argv[3])
-        paramsFile = sys.argv[4]
         initialIncumbent = float(sys.argv[5])
-        args = [solver, stub, '-p']
         # time.sleep(random.uniform(1, 10))
 
         self.stoppedVar = os.path.splitext(stub)[0] + '_stopped'
@@ -84,21 +105,12 @@ class Task:
         if cur_record != "NULL":
             initialIncumbent = min(initialIncumbent, float(cur_record))
 
-        if initialIncumbent < 1e22:
-            args.append('-b')
-            args.append('%g' % initialIncumbent)
+        self.solver = startSolver(initialIncumbent)
 
-        with open(paramsFile, 'r') as f:
-            otherArgs = f.read().split('\n')
-        if otherArgs:
-            args.append('--')
-            args.extend(otherArgs)
-
-        self.solver = port_proxy.startSolver(args)
-
-        # receive record updates in a separate thread
-        receiver = threading.Thread(target=self.receive_records)
-        receiver.start()
+        if self.sock:
+            # receive record updates in a separate thread
+            receiver = threading.Thread(target=self.receive_records)
+            receiver.start()
 
         hadSmth = False
         while self.running:
@@ -119,16 +131,18 @@ class Task:
                 if not hadSmth:
                     print 'Warning: No data from solver received'
                 self.running = False
-                self.sock.shutdown(socket.SHUT_WR)
-                receiver.join()
+                if self.sock:
+                    self.sock.shutdown(socket.SHUT_WR)
+                    receiver.join()
                 sys.stderr.write(">>> solver_exitcode: %s\n" % solverMsg[1])
                 print 'Finished', solverMsg
                 return solverMsg[1]
         return 0
 
     def send_message(self, msg):
-        self.sock.sendall(struct.pack('>I', len(msg)))
-        self.sock.sendall(msg)
+        if self.sock:
+            self.sock.sendall(struct.pack('>I', len(msg)))
+            self.sock.sendall(msg)
 
     def receive_message(self):
         header = recvExact(self.sock, 4)
@@ -175,9 +189,13 @@ class Task:
 
     def shutdown(self):
         self.running = False
-        self.sock.close()
+        if self.sock:
+            self.sock.close()
 
 def main():
+    fork = os.environ.get("OMPI_COMM_WORLD_RANK", "0") == "0"
+    if not fork:
+        startSolver(float(sys.argv[5]), fork)
     task = Task()
     try:
         return task.run()
