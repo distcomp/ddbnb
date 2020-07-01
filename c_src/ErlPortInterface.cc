@@ -46,11 +46,28 @@ double readDouble(byte *buf)
     return *((double *)&l);
 }
 
+void writeUint16(byte *buf, std::uint16_t val)
+{
+    std::uint16_t *p = &val;
+    for (size_t i = 0; i < 2; ++i)
+    {
+        buf[1 - i] = (*p) & 0xFF;
+        *p >>= 8;
+    }
+}
+
+std::uint16_t readUint16(byte *buf)
+{
+    return ((std::uint16_t)buf[0] << 8) + (std::uint16_t)buf[1];
+}
+
 ErlPortInterface::ErlPortInterface()
 {
     _state = BV_NONE;
     _bEnabled = false;
     _quiet = false;
+    _acceptor = NULL;
+    _bestValueSeqNumber = 0;
     pthread_mutex_init(&_mutex, NULL);
 }
 
@@ -140,17 +157,17 @@ void *ErlPortInterface::readerLoop(void *ptr)
         switch (buf[0])
         {
         case 1:
-            if (len != 9)
+            if (len != 11)
             {
                 fprintf(stderr, ">>> Wrong input message size: %d != 9\n", len);
                 exit(1);
             }
             if (!This->_quiet)
             {
-                fprintf(stderr, ">>> readerLoop(): received best solution: %lf\n",
-                    readDouble(buf + 1));
+                fprintf(stderr, ">>> readerLoop(): received best solution: %lf %d\n",
+                    readDouble(buf + 1), readUint16(buf + 9));
             }
-            This->setBestValue(readDouble(buf + 1), false);
+            This->setBestValue(readDouble(buf + 1), false, readUint16(buf + 9));
             break;
         }
     }
@@ -158,7 +175,7 @@ void *ErlPortInterface::readerLoop(void *ptr)
     exit(2);
 }
 
-void ErlPortInterface::sendIncumbent(double value)
+void ErlPortInterface::sendIncumbent(double value, std::uint16_t seqNumber)
 {
     if (!_quiet)
     {
@@ -166,38 +183,51 @@ void ErlPortInterface::sendIncumbent(double value)
     }
     if (_bEnabled)
     {
-        byte buf[1 + 8];
+        byte buf[1 + 8 + 2];
         buf[0] = 3;
         writeDouble(buf + 1, value);
+        writeUint16(buf + 9, seqNumber);
         write_cmd(buf, sizeof(buf));
     }
 }
 
-void ErlPortInterface::setBestValue(double value, bool fromSolver)
+bool ErlPortInterface::setBestValue(double value, bool fromSolver, std::uint16_t seqNumber)
 {
+    bool accepted = false;
     pthread_mutex_lock(&_mutex);
     switch (_state)
     {
     case BV_NONE:
+        accepted = true;
         _state = fromSolver ? BV_FROM_SOLVER : BV_FROM_ERL;
         _bestValue = value;
         if (fromSolver)
         {
-            sendIncumbent(value);
+            sendIncumbent(value, seqNumber);
+        }
+        else if (_acceptor)
+        {
+            _acceptor->acceptNewBestValue(value, seqNumber);
         }
         break;
     default:
         if (isBetter(_bestValue, value))
         {
+            accepted = true;
             _state = fromSolver ? BV_FROM_SOLVER : BV_FROM_ERL;
             _bestValue = value;
             if (fromSolver)
             {
-                sendIncumbent(value);
+                sendIncumbent(value, seqNumber);
+            }
+            else if (_acceptor)
+            {
+                _acceptor->acceptNewBestValue(value, seqNumber);
             }
         }
     }
     pthread_mutex_unlock(&_mutex);
+    return accepted;
 }
 
 void ErlPortInterface::getBestValue(BestValueAcceptor &acceptor)
@@ -209,23 +239,25 @@ void ErlPortInterface::getBestValue(BestValueAcceptor &acceptor)
         {
             fprintf(stderr, ">>> getBestValue(): setting best solution in solver: %lf\n", _bestValue);
         }
-        acceptor.acceptNewBestValue(_bestValue);
+        acceptor.acceptNewBestValue(_bestValue, _bestValueSeqNumber);
         _state = BV_FROM_SOLVER;
     }
     pthread_mutex_unlock(&_mutex);
 }
 
 
-void ErlPortInterface::initialize(bool enabled, double bestVal)
+void ErlPortInterface::initialize(bool enabled, double bestVal,
+    BestValueAcceptor *acceptor)
 {
     _state = BV_FROM_SOLVER;
     _bestValue = bestVal;
-    initialize(enabled);
+    initialize(enabled, acceptor);
 }
 
-void ErlPortInterface::initialize(bool enabled)
+void ErlPortInterface::initialize(bool enabled, BestValueAcceptor *acceptor)
 {
     _bEnabled = enabled;
+    _acceptor = acceptor;
 
     if (_bEnabled)
     {

@@ -8,12 +8,13 @@
 
 #include <string>
 #include <pthread.h>
+#include <cstdint>
 
 bool isBetter(double oldVal, double newVal);
 
 class BestValueAcceptor {
  public:
-    virtual void acceptNewBestValue(double bestVal) = 0;
+    virtual void acceptNewBestValue(double bestVal, std::uint16_t seqNumber) = 0;
     virtual ~BestValueAcceptor() = 0;
 };
 
@@ -22,11 +23,11 @@ class ErlPortInterface
  public:
     ErlPortInterface();
 
-    void initialize(bool enabled, double bestValue);
+    void initialize(bool enabled, double bestValue, BestValueAcceptor *acceptor = NULL);
 
-    void initialize(bool enabled);
+    void initialize(bool enabled, BestValueAcceptor *acceptor = NULL);
 
-    void setBestValue(double value, bool fromSolver);
+    bool setBestValue(double value, bool fromSolver, std::uint16_t seqNumber = 0);
 
     void getBestValue(BestValueAcceptor &acceptor);
 
@@ -44,12 +45,14 @@ class ErlPortInterface
 
     BestValueState _state;
     double _bestValue;
+    std::uint16_t _bestValueSeqNumber;
     bool _bEnabled;
     pthread_mutex_t _mutex;
     bool _quiet;
+    BestValueAcceptor *_acceptor;
 
     static void *readerLoop(void *);
-    void sendIncumbent(double value);
+    void sendIncumbent(double value, std::uint16_t seqNumber);
 
 };
 
