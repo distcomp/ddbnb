@@ -1,0 +1,263 @@
+diff -r -u scipoptsuite-6.0.1/ug/Makefile work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/Makefile
+--- scipoptsuite-6.0.1/ug/Makefile	2019-01-09 19:43:04.000000000 +0300
++++ work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/Makefile	2019-06-19 11:44:30.000000000 +0300
+@@ -117,6 +117,7 @@
+ 			ug/paraSolverTerminationState.o \
+ 			ug/paraSysTimer.o \
+ 			ug/gzstream.o \
++			ug/ErlPortInterface.o \
+ 			ug/uggithash.o
+ 
+ 
+diff -r -u scipoptsuite-6.0.1/ug/src/ug/paraInitiator.h work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/src/ug/paraInitiator.h
+--- scipoptsuite-6.0.1/ug/src/ug/paraInitiator.h	2019-01-09 19:43:05.000000000 +0300
++++ work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/src/ug/paraInitiator.h	2020-05-31 12:00:30.000000000 +0300
+@@ -43,6 +43,8 @@
+ #include "ugs/ugsParaCommMpi.h"
+ #endif
+ 
++#define UG_WITH_DDBNB
++
+ namespace UG
+ {
+ 
+@@ -272,6 +274,14 @@
+    virtual void writeUgsIncumbentSolution(UGS::UgsParaCommMpi *ugsComm) = 0;
+ #endif
+ 
++#ifdef UG_WITH_DDBNB
++   /** start reading DDBNB incumbent solutions from outside **/
++   virtual void startDDBNBComm() = 0;
++
++   /** write DDBNB incumbent solution **/
++   virtual void writeDDBNBIncumbentSolution() = 0;
++#endif
++
+ };
+ 
+ typedef ParaInitiator *ParaInitiatorPtr;
+diff -r -u scipoptsuite-6.0.1/ug/src/ug/paraLoadCoordinator.cpp work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/src/ug/paraLoadCoordinator.cpp
+--- scipoptsuite-6.0.1/ug/src/ug/paraLoadCoordinator.cpp	2019-01-09 19:43:05.000000000 +0300
++++ work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/src/ug/paraLoadCoordinator.cpp	2020-05-26 11:32:49.000000000 +0300
+@@ -996,6 +1036,9 @@
+          paraInitiator->writeUgsIncumbentSolution(commUgs);
+       }
+ #endif
++#ifdef UG_WITH_DDBNB
++      paraInitiator->writeDDBNBIncumbentSolution();
++#endif
+    }
+    else
+    {
+diff -r -u scipoptsuite-6.0.1/ug/src/ug_scip/parascip.cpp work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/src/ug_scip/parascip.cpp
+--- scipoptsuite-6.0.1/ug/src/ug_scip/parascip.cpp	2019-01-09 19:43:06.000000000 +0300
++++ work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/src/ug_scip/parascip.cpp	2020-05-31 12:02:57.000000000 +0300
+@@ -278,6 +279,9 @@
+          paraLc = new ParaLoadCoordinator(comm, paraParamSet, paraInitiator, &racingSolversExist, paraTimer, detTimer);
+ #endif
+       }
++#ifdef UG_WITH_DDBNB
++      paraInitiator->startDDBNBComm();
++#endif
+       if( paraInitiator->isWarmStarted() )
+       {
+ #ifdef UG_WITH_ZLIB
+diff -r -u scipoptsuite-6.0.1/ug/src/ug_scip/scipParaInitiator.cpp work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/src/ug_scip/scipParaInitiator.cpp
+--- scipoptsuite-6.0.1/ug/src/ug_scip/scipParaInitiator.cpp	2019-01-09 19:43:06.000000000 +0300
++++ work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/src/ug_scip/scipParaInitiator.cpp	2020-05-31 13:33:47.000000000 +0300
+@@ -38,6 +38,12 @@
+ #include "scip/debug.h"
+ #endif
+ 
++#ifdef UG_WITH_DDBNB
++#include "ug/ErlPortInterface.h"
++ErlPortInterface g_portInterface;
++class ParaSCIPBestValueAcceptor;
++#endif
++
+ // #define UG_SCIP_SOL_FEASIBILITY_CHECK_IN_LC
+ 
+ using namespace UG;
+@@ -2274,3 +2282,105 @@
+    return;
+ }
+ #endif
++
++#ifdef UG_WITH_DDBNB
++
++class ParaSCIPBestValueAcceptor : public BestValueAcceptor
++{
++    ParaComm *_paraComm;
++    SCIP *scip;
++public:
++    ParaSCIPBestValueAcceptor(ParaComm *paraComm, SCIP *pScip)
++        : _paraComm(paraComm)
++    {
++        this->scip = pScip;
++    }
++    void acceptNewBestValue(double bestVal, uint16_t seqNumber)
++    {
++        DEF_SCIP_PARA_COMM( scipParaComm, _paraComm );
++        SCIP_SOL *origSol;
++        SCIP_CALL_ABORT( SCIPcreateOrigSol(scip, &origSol, NULL) );
++        SCIP_Bool partial = FALSE;
++        SCIP_Bool error = FALSE;
++        std::ostringstream s;
++        s << "insol-" << seqNumber << ".sol";
++
++        SCIP_CALL_ABORT( SCIPreadSolFile(scip, s.str().c_str(), origSol,
++                FALSE, &partial, &error ) );
++        std::cout << "################## partial = " << partial << ", error = " << error << " ##############" << std::endl;
++      if( (!partial) && (!error) )
++      {
++         SCIP_Bool stored = FALSE;
++         SCIP_CALL_ABORT( SCIPtrySol(scip, origSol, FALSE, TRUE, TRUE, TRUE, FALSE, &stored) );
++
++         std::cout << "################## stored = " << stored << " ##############" << std::endl;
++
++         if( 1 || stored )
++         {
++             SCIP_SOL *sol = origSol;//SCIPgetBestSol(scip);
++            int nVars = SCIPgetNVars(scip);
++            SCIP_VAR **vars = SCIPgetVars(scip);
++            SCIP_Real *vals = new SCIP_Real[nVars];
++            SCIP_CALL_ABORT( SCIPgetSolVals(scip, sol, nVars, vars, vals) );
++            for (int i = 0 ; i < nVars; ++i) {
++                std::cout << i << " "<< vars[i] << " " <<  vals[i] << " " << SCIPvarGetIndex(vars[i]) << " " << SCIPvarGetProbindex(vars[i]) << " " << SCIPvarGetName(vars[i]) << std::endl;
++            }
++
++            ParaSolution *solution = scipParaComm->createScipParaSolution(
++                           0,
++                           SCIPgetSolTransObj(scip, sol),  // Only this value may be used
++                           nVars,
++                           vars,
++                           vals
++                           );
++            delete [] vals;
++            solution->send(scipParaComm, 0);
++         }
++      }
++
++      SCIP_CALL_ABORT( SCIPfreeSol(scip, &origSol) );
++    }
++};
++
++void ScipParaInitiator::startDDBNBComm()
++{
++    acceptor = new ParaSCIPBestValueAcceptor(paraComm, scip);
++    g_portInterface.initialize(true, acceptor);
++}
++
++void ScipParaInitiator::writeDDBNBIncumbentSolution()
++{
++   /* Write out the solution */
++   seqNumber++;
++   std::ostringstream s;
++   s << "outsol-" << seqNumber << ".sol";
++   FILE *fp = fopen(s.str().c_str(), "w");
++   if( fp == NULL )
++   {
++      fprintf (stderr, "Cannot open solution file to write. File name = %s\n", s.str().c_str());
++      exit(1);
++   }
++
++   SCIP_SOL* sol = SCIPgetBestSol(scip);
++
++   assert(sol);
++   fprintf( fp, "# ");
++
++   SCIP_CALL_ABORT( SCIPprintSol(scip, sol, fp, TRUE) );
++
++   fclose(fp);
++
++   if (!g_portInterface.setBestValue(convertToExternalValue(
++               solution->getObjectiveFuntionValue()), true, seqNumber))
++   {
++       seqNumber--;
++       remove(s.str().c_str());
++   }
++   else{
++     std::cout << "LC: NEW INCUMBENT DDBNB"  << std::endl;
++}
++   //std::cout << "LC: NEW INCUMBENT ACCEPTED " << sol->getObjectiveFuntionValue() << " " <<
++   //    paraInitiator->convertToExternalValue(sol->getObjectiveFuntionValue()) << std::endl;
++   //paraInitiator->writeDDBNBIncumbentSolution();
++}
++#endif
+diff -r -u scipoptsuite-6.0.1/ug/src/ug_scip/scipParaInitiator.h work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/src/ug_scip/scipParaInitiator.h
+--- scipoptsuite-6.0.1/ug/src/ug_scip/scipParaInitiator.h	2019-01-09 19:43:05.000000000 +0300
++++ work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/src/ug_scip/scipParaInitiator.h	2020-05-31 12:19:43.000000000 +0300
+@@ -43,12 +43,15 @@
+ #include "ugs/ugsParaCommMpi.h"
+ #endif
+ 
++class ParaSCIPBestValueAcceptor;
++
+ namespace ParaSCIP
+ {
+ 
+ /** Initiator class */
+ class ScipParaInitiator : public UG::ParaInitiator
+ {
++public:
+    UG::ParaParamSet     *paraParams;
+    ScipParaInstance     *instance;
+    ScipParaSolution     *solution;
+@@ -78,6 +81,10 @@
+ #ifdef UG_WITH_UGS
+    int                  seqNumber;
+ #endif
++#ifdef UG_WITH_DDBNB
++   int                  seqNumber;
++   ParaSCIPBestValueAcceptor *acceptor;
++#endif
+ 
+    bool addRootNodeCuts();
+    void outputProblemInfo(int *nNonLinearConsHdlrs);
+@@ -96,6 +103,9 @@
+ #ifdef UG_WITH_UGS
+             , seqNumber(0)
+ #endif
++#ifdef UG_WITH_DDBNB
++            , seqNumber(0), acceptor(0)
++#endif
+    {
+    }
+ 
+@@ -103,6 +113,9 @@
+    ~ScipParaInitiator(
+          )
+    {
++#ifdef UG_WITH_DDBNB
++       //delete acceptor;
++#endif
+       if( instance ) delete instance;
+       if( solution ) delete solution;
+       if( scipDiffParamSetRoot ) delete scipDiffParamSetRoot;
+@@ -321,6 +334,14 @@
+    void writeUgsIncumbentSolution(UGS::UgsParaCommMpi *ugsComm);
+ #endif
+ 
++#ifdef UG_WITH_DDBNB
++   /** start reading DDBNB incumbent solutions from outside **/
++   virtual void startDDBNBComm();
++
++   /** write DDBNB incumbent solution **/
++   virtual void writeDDBNBIncumbentSolution();
++#endif
++
+ };
+ 
+ typedef ScipParaInitiator *ScipParaInitiatorPtr;
+diff -r -u scipoptsuite-6.0.1/ug/src/ug_scip/scipParaSolution.h work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/src/ug_scip/scipParaSolution.h
+--- scipoptsuite-6.0.1/ug/src/ug_scip/scipParaSolution.h	2019-01-09 19:43:06.000000000 +0300
++++ work/4isa/solver-installers/solver/scipoptsuite-6.0.1-ddbnb/ug/src/ug_scip/scipParaSolution.h	2019-11-21 01:28:33.000000000 +0300
+@@ -83,7 +87,7 @@
+             // std::cout << "*** index: name: value ***" << std::endl;
+             for(int i = 0; i < nVars; i++ )
+             {
+-               indicesAmongSolvers[i] = SCIPvarGetIndex(vars[i]);
++               indicesAmongSolvers[i] = SCIPvarGetProbindex(vars[i]);
+                values[i] = vals[i];
+                // std::cout << i << ": " << SCIPvarGetName(vars[indicesAmongSolvers[i]]) << ": " << values[i] << std::endl;
+                // std::cout << i << ": " << SCIPvarGetName(vars[i]) << ": " << values[i] << std::endl;
