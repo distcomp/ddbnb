@@ -14,6 +14,7 @@ bool isBetter(double oldVal, double newVal);
 
 class BestValueAcceptor {
  public:
+    virtual void acceptNewBestValue(double bestVal) = 0;
     virtual void acceptNewBestValue(double bestVal, std::uint16_t seqNumber) = 0;
     virtual ~BestValueAcceptor() = 0;
 };
@@ -27,7 +28,9 @@ class ErlPortInterface
 
     void initialize(bool enabled, BestValueAcceptor *acceptor = NULL);
 
-    bool setBestValue(double value, bool fromSolver, std::uint16_t seqNumber = 0);
+    void setBestValue(double value, bool fromSolver);
+
+    bool setBestValue(double value, bool fromSolver, std::uint16_t seqNumber);
 
     void getBestValue(BestValueAcceptor &acceptor);
 
@@ -52,6 +55,7 @@ class ErlPortInterface
     BestValueAcceptor *_acceptor;
 
     static void *readerLoop(void *);
+    void sendIncumbent(double value);
     void sendIncumbent(double value, std::uint16_t seqNumber);
 
 };
