@@ -17,8 +17,11 @@ def readExact(fd, l):
         bufs.append(buf)
     return ''.join(bufs)
 
-def sendIncumbent((_, fd, cpid), value, seq):
-    msg = struct.pack('>HBdH', 11, 1, value, seq)
+def sendIncumbent((_, fd, cpid), value, seq=None):
+    if seq is None:
+        msg = struct.pack('>HBd', 9, 1, value)
+    else:
+        msg = struct.pack('>HBdH', 11, 5, value, seq)
     wr = os.write(fd, msg)
     #assert(wr == len(msg))
 
@@ -53,8 +56,15 @@ def readFromSolver((solver2proxyRead, _, cpid)):
         return 'closed', exitcode
     bodyLen, msgType = struct.unpack('>HB', buf)
     buf = readExact(solver2proxyRead, bodyLen-1)
-    if msgType == 3:
+    if msgType == 4:
         incumbent, seqNumber = struct.unpack('>dH', buf)
+        return 'incumbent-seq', incumbent, seqNumber
+    elif msgType == 3:
+        incumbent, = struct.unpack('>d', buf)
+        if 0:
+            with open('outsol-1.sol', 'w') as f:
+                f.write(str(incumbent)*100)
+            return 'incumbent-seq', incumbent, 1
         return 'incumbent', incumbent
     elif msgType == 2:
         statusLen = bodyLen - 9

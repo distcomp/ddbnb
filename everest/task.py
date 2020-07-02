@@ -5,6 +5,8 @@ import struct
 import random
 import threading
 import time
+import base64
+import zlib
 
 import port_proxy
 
@@ -115,10 +117,22 @@ class Task:
         hadSmth = False
         while self.running:
             solverMsg = port_proxy.readFromSolver(self.solver)
-            if solverMsg[0] in ['incumbent', 'result']:
+            if solverMsg[0] in ['incumbent', 'result', 'incumbent-seq']:
                 hadSmth = True
                 print "Found new record: %f" % solverMsg[1]
-                msg = "VAR_SET_MD record %f" % solverMsg[1]
+                if solverMsg[0] == 'incumbent-seq':
+                    seqNumber = solverMsg[2]
+                    with open('outsol-%d.sol' % seqNumber, 'rb') as f:
+                        solution = f.read()
+                    with open(os.path.splitext(stub)[0] + '.sol', 'wb') as f:
+                        f.write(solution)
+                    print "Found new record: %f seq: %d size: %d" % (
+                        solverMsg[1], solverMsg[2], len(solution))
+                    msg = "VAR_SET_MD record %f:%s" % (
+                        solverMsg[1], base64.standard_b64encode(zlib.compress(solution)))
+                else:
+                    print "Found new record: %f" % solverMsg[1]
+                    msg = "VAR_SET_MD record %f" % solverMsg[1]
                 self.send_message(msg)
                 if solverMsg[0] == 'result':
                     with open(os.path.splitext(stub)[0] + '.sol', 'r') as f:
@@ -150,13 +164,14 @@ class Task:
             return ''
         size, = struct.unpack('>I', header)
         msg = recvExact(self.sock, size)
-        print "%s Received message: %s" % (time.ctime(), msg)
+        print "%s Received message: %s..." % (time.ctime(), msg[:25])
         return msg
 
     def receive_records(self):
         killing = False
         nextKill = None
         killDelay = 1
+        seqNumber = 0
         while self.running:
             try:
                 msg = self.receive_message()
@@ -164,9 +179,21 @@ class Task:
                     self.running = False
                     break
                 if msg.startswith('VAR_VALUE record'):
-                    record = float(msg.split()[2])
-                    port_proxy.sendIncumbent(self.solver, record)
-                    print "Updated record: %f" % record
+                    value = msg.split()[2]
+                    if not ':' in value:
+                        record = float(msg.split()[2])
+                        port_proxy.sendIncumbent(self.solver, record)
+                        print "Updated record: %f" % record
+                    else:
+                        spl = value.split(':')
+                        record = float(spl[0])
+                        solution = zlib.decompress(base64.standard_b64decode(spl[1]))
+                        seqNumber += 1
+                        with open('insol-%d.sol' % seqNumber, 'wb') as f:
+                            f.write(solution)
+                        port_proxy.sendIncumbent(self.solver, record, seqNumber)
+                        print "Updated record: %f, seq %d, size %d, comp-size %d" % (
+                            record, seqNumber, len(solution), len(spl[1]))
                 elif self.stopMode and msg.startswith('VAR_VALUE %s' % self.stoppedVar):
                     assert(msg.split()[2] == '1')
                     killing = True

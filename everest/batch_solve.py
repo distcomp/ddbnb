@@ -22,7 +22,8 @@ def makeParser():
                         help='token obtainable with everest.py')
     parser.add_argument('-r', '--resources', nargs='+', default=[],
                         help='everest resources to be used')
-    parser.add_argument('-s', '--solver', default='scip', choices=['scip', 'cbc', 'scip_bundle'],
+    parser.add_argument('-s', '--solver', default='scip', choices=[
+        'scip', 'cbc', 'scip_bundle', 'parascip'],
                         help='solver to use')
     parser.add_argument('-p', '--parameters', default=[], nargs='+',
                         help='solver parameters as k=v pairs')
@@ -37,11 +38,11 @@ def makeParser():
     parser.add_argument('-ii', '--initial-incumbent', type=float, default='1e23',
                         help='start task with initial incumbent')
     parser.add_argument('-i', '--input', type=argparse.FileType('rb'),
-                        help='file with a list of input NL-files')
+                        help='file with a list of input stub files')
     parser.add_argument('-o', '--out-prefix', default='out', help='output prefix')
     parser.add_argument('-ur', '--use-results', help='Skip parameter sweep run by using already computed results')
     parser.add_argument('--job', help='Skip parameter sweep run by downloading results from a completed job')
-    parser.add_argument('file', nargs='*', default=[], help='input NL-files')
+    parser.add_argument('file', nargs='*', default=[], help='input stub files')
     return parser
 
 def main0():
@@ -90,10 +91,16 @@ def main(tmpDir):
             f.write('\n'.join(args.parameters))
         paramsFiles.append(makeName('params.txt'))
 
+    stubExt = 'nl'
     inputFiles = ['run-task.sh', 'task.py', 'port_proxy.py']
     if args.solver == 'scip_bundle':
         inputFiles.append('scip_port')
         solver = './scip_port'
+    elif args.solver == 'parascip':
+        inputFiles.append('run-parascip.sh')
+        inputFiles.append('parascip.set')
+        solver = './run-parascip.sh'
+        stubExt = 'cip'
     else:
         solver = '%s_port' % args.solver
 
@@ -104,7 +111,7 @@ def main(tmpDir):
             z.write(os.path.join(d, f), f)
         for i, stub in enumerate(stubs):
             stubNames[i] = os.path.basename(stub)
-            z.write(stub, 'stub%d.nl' % i)
+            z.write(stub, 'stub%d.%s' % (i, stubExt))
         for i, params in enumerate(paramsFiles):
             paramNames[i] = os.path.basename(params)
             z.write(params, 'params%d.txt' % i)
@@ -112,13 +119,13 @@ def main(tmpDir):
     with open(makeName('.plan'), 'wb') as f:
         f.write('parameter n from 0 to %d step 1\n' % (len(stubs) - 1))
         f.write('parameter p from 0 to %d step 1\n' % (len(paramsFiles) - 1))
-        f.write('input_files stub${n}.nl params${p}.txt %s\n' % ' '.join(inputFiles))
-        f.write('command bash run-task.sh %s stub${n}.nl %d params${p}.txt %g\n' % (
-            solver, args.stop_mode, args.initial_incumbent))
+        f.write('input_files stub${n}.%s params${p}.txt %s\n' % (stubExt, ' '.join(inputFiles)))
+        f.write('command bash run-task.sh %s stub${n}.%s %d params${p}.txt %g\n' % (
+            solver, stubExt, args.stop_mode, args.initial_incumbent))
         f.write('output_files stub${n}.sol stderr stdout.tgz\n')
 
     if not args.use_results is None:
-        tasksRes = saveResults(args.use_results, stubNames, paramNames, args)
+        tasksRes = saveResults(args.use_results, stubNames, paramNames, stubExt, args)
         if args.get_log:
             parseJobLog(args.out_prefix + '.log', tasksRes, args)
         return
@@ -141,7 +148,8 @@ def main(tmpDir):
             if 'result' in result:
                 print 'Result downloaded'
                 session.getFile(result['result']['results'], makeName('-results.zip'))
-                tasksRes = saveResults(makeName('-results.zip'), stubNames, paramNames, args)
+                tasksRes = saveResults(makeName('-results.zip'), stubNames,
+                                       paramNames, stubExt, args)
                 if args.get_log:
                     print "Downloading job's log..."
                     session.getJobLog(jobId, args.out_prefix + '.log')
@@ -240,7 +248,7 @@ def parseFile(fileName):
                         result['tasks'][m.group(1)]['resourceId'] = mm.group(1)
     return result
 
-def saveResults(jobResults, stubNames, paramNames, args):
+def saveResults(jobResults, stubNames, paramNames, stubExt, args):
     OTHER_FIELDS = ['hostname', 'solver_exitcode']
     jobs = defaultdict(dict)
     stubsFound = {}
@@ -327,7 +335,7 @@ def saveResults(jobResults, stubNames, paramNames, args):
             info['status'] = best['status']
             info['has_solution'] = True
             infos.append(info)
-            outName = stubName.replace('.nl', '.sol')
+            outName = stubName.replace('.%s' % stubExt, '.sol')
             print 'Saving solution %s (%s) for task %d with incumbent %f' % (
                 outName, best['status'], info['taskNum'], best['val'])
             z.writestr(outName, best['sol'])
