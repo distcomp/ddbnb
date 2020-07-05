@@ -14,8 +14,8 @@ bool isBetter(double oldVal, double newVal);
 
 class BestValueAcceptor {
  public:
-    virtual void acceptNewBestValue(double bestVal) = 0;
-    virtual void acceptNewBestValue(double bestVal, std::uint16_t seqNumber) = 0;
+    virtual void acceptNewBestValue(double bestVal) {}
+    virtual void acceptNewBestValue(double bestVal, std::uint16_t seqNumber) {}
     virtual ~BestValueAcceptor() = 0;
 };
 
