@@ -6,7 +6,7 @@ import random
 import threading
 import time
 import base64
-import zlib
+import bz2
 
 import port_proxy
 
@@ -39,6 +39,10 @@ def startSolver(initialIncumbent, fork=True):
         args.extend(otherArgs)
 
     return port_proxy.startSolver(args, fork)
+
+def removeZeros(solution):
+    spl = [l for l in solution.split('\n') if l and l.split()[1] != '0']
+    return '\n'.join(spl)
 
 class Task:
 
@@ -103,9 +107,13 @@ class Task:
             os.mknod(os.path.splitext(stub)[0] + '.sol')
             return
 
+        self.initialRecord = None
         cur_record = vals['record']
         if cur_record != "NULL":
-            initialIncumbent = min(initialIncumbent, float(cur_record))
+            if not ':' in cur_record:
+                initialIncumbent = min(initialIncumbent, float(cur_record))
+            else:
+                self.initialRecord = cur_record
 
         self.solver = startSolver(initialIncumbent)
 
@@ -124,12 +132,13 @@ class Task:
                     seqNumber = solverMsg[2]
                     with open('outsol-%d.sol' % seqNumber, 'rb') as f:
                         solution = f.read()
+                    solution = removeZeros(solution)
                     with open(os.path.splitext(stub)[0] + '.sol', 'wb') as f:
                         f.write(solution)
                     print "Found new record: %f seq: %d size: %d" % (
                         solverMsg[1], solverMsg[2], len(solution))
                     msg = "VAR_SET_MD record %f:%s" % (
-                        solverMsg[1], base64.standard_b64encode(zlib.compress(solution)))
+                        solverMsg[1], base64.standard_b64encode(bz2.compress(solution)))
                 else:
                     print "Found new record: %f" % solverMsg[1]
                     msg = "VAR_SET_MD record %f" % solverMsg[1]
@@ -148,6 +157,8 @@ class Task:
                 if self.sock:
                     self.sock.shutdown(socket.SHUT_WR)
                     receiver.join()
+                if solverMsg[1] == 0 and 'parascip' in sys.argv[1]:
+                    sys.stderr.write(">>> solutionHeader: ok\n")
                 sys.stderr.write(">>> solver_exitcode: %s\n" % solverMsg[1])
                 print 'Finished', solverMsg
                 return solverMsg[1]
@@ -174,10 +185,14 @@ class Task:
         seqNumber = 0
         while self.running:
             try:
-                msg = self.receive_message()
-                if not msg:
-                    self.running = False
-                    break
+                if self.initialRecord:
+                    msg = 'VAR_VALUE record %s' % self.initialRecord
+                    self.initialRecord = None
+                else:
+                    msg = self.receive_message()
+                    if not msg:
+                        self.running = False
+                        break
                 if msg.startswith('VAR_VALUE record'):
                     value = msg.split()[2]
                     if not ':' in value:
@@ -187,7 +202,7 @@ class Task:
                     else:
                         spl = value.split(':')
                         record = float(spl[0])
-                        solution = zlib.decompress(base64.standard_b64decode(spl[1]))
+                        solution = bz2.decompress(base64.standard_b64decode(spl[1]))
                         seqNumber += 1
                         with open('insol-%d.sol' % seqNumber, 'wb') as f:
                             f.write(solution)

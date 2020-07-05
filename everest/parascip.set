@@ -3,7 +3,7 @@ LogSolvingStatusFilePath = "./logs/"
 LogNodesTransferFilePath = "./logs/"
 CheckpointFilePath = "./logs/"
 SolutionFilePath = "./logs/"
-NotificationInterval = 10
+NotificationInterval = 40
 
 LogSolvingStatus = TRUE
 

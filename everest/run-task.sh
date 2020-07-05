@@ -4,9 +4,13 @@ export OPENBLAS_NUM_THREADS=1
 chmod +x $1 2>/dev/null
 cat /proc/meminfo
 if [[ "$1" == *"parascip"* ]]; then
+    PART=""
+    if [[ "$SLURM_DEF_PART" != "" ]]; then
+        PART="-p $SLURM_DEF_PART"
+    fi
     ulimit -c 0
     mkdir -p logs
-    salloc -p hpc4-3d -n 4 -t 1:00:00 mpirun python -u task.py $*
+    salloc $PART -n 16 -t 4:00:00 mpirun python -u task.py $*
     RET=$?
     tar cjf logs.tbz logs
 else
