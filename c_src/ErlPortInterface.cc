@@ -264,6 +264,7 @@ bool ErlPortInterface::setBestValue(double value, bool fromSolver, std::uint16_t
         accepted = true;
         _state = fromSolver ? BV_FROM_SOLVER : BV_FROM_ERL;
         _bestValue = value;
+        _bestValueSeqNumber = seqNumber;
         if (fromSolver)
         {
             sendIncumbent(value, seqNumber);
@@ -279,6 +280,7 @@ bool ErlPortInterface::setBestValue(double value, bool fromSolver, std::uint16_t
             accepted = true;
             _state = fromSolver ? BV_FROM_SOLVER : BV_FROM_ERL;
             _bestValue = value;
+            _bestValueSeqNumber = seqNumber;
             if (fromSolver)
             {
                 sendIncumbent(value, seqNumber);
@@ -302,7 +304,7 @@ void ErlPortInterface::getBestValue(BestValueAcceptor &acceptor)
         {
             fprintf(stderr, ">>> getBestValue(): setting best solution in solver: %lf\n", _bestValue);
         }
-        acceptor.acceptNewBestValue(_bestValue);
+        acceptor.acceptNewBestValue(_bestValue, _bestValueSeqNumber);
         _state = BV_FROM_SOLVER;
     }
     pthread_mutex_unlock(&_mutex);
