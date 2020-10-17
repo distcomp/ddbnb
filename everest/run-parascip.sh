@@ -1,2 +1,3 @@
 #!/bin/bash
-exec parascip_port parascip.set $1 -q
+set -e
+exec parascip parascip.set $1 -q -ddbnb

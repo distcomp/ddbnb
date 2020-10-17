@@ -1,7 +1,8 @@
-diff -u -r scipoptsuite-6.0.2/ug/Makefile /vagrant/scipoptsuite-6.0.2-ddbnb/ug/Makefile
---- scipoptsuite-6.0.2/ug/Makefile	2019-07-08 09:34:03.000000000 +0000
-+++ /vagrant/scipoptsuite-6.0.2-ddbnb/ug/Makefile	2020-09-21 08:22:12.000000000 +0000
-@@ -117,6 +117,7 @@
+diff --git a/Makefile b/Makefile
+index edf5a0c..7d94d52 100644
+--- a/Makefile
++++ b/Makefile
+@@ -117,6 +117,7 @@ UGOBJ           =       ug/paraLoadCoordinator.o \
  			ug/paraSolverTerminationState.o \
  			ug/paraSysTimer.o \
  			ug/gzstream.o \
@@ -9,10 +10,11 @@ diff -u -r scipoptsuite-6.0.2/ug/Makefile /vagrant/scipoptsuite-6.0.2-ddbnb/ug/M
  			ug/uggithash.o
  
  
-diff -u -r scipoptsuite-6.0.2/ug/src/ug/paraCommMpi.cpp /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug/paraCommMpi.cpp
---- scipoptsuite-6.0.2/ug/src/ug/paraCommMpi.cpp	2019-07-08 09:34:04.000000000 +0000
-+++ /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug/paraCommMpi.cpp	2020-10-11 09:21:58.000000000 +0000
-@@ -657,13 +657,22 @@
+diff --git a/src/ug/paraCommMpi.cpp b/src/ug/paraCommMpi.cpp
+index 0cbd9f2..bf5059e 100644
+--- a/src/ug/paraCommMpi.cpp
++++ b/src/ug/paraCommMpi.cpp
+@@ -657,13 +657,22 @@ ParaCommMpi::usend(
     int count,
     MPI_Datatype datatype,
     int dest,
@@ -36,21 +38,23 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug/paraCommMpi.cpp /vagrant/scipoptsuite-6.
     TAG_TRACE (Send, To, dest, tag);
     return 0;
  }
-diff -u -r scipoptsuite-6.0.2/ug/src/ug/paraCommMpi.h /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug/paraCommMpi.h
---- scipoptsuite-6.0.2/ug/src/ug/paraCommMpi.h	2019-07-08 09:34:04.000000000 +0000
-+++ /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug/paraCommMpi.h	2020-10-10 20:25:43.000000000 +0000
-@@ -241,7 +241,7 @@
+diff --git a/src/ug/paraCommMpi.h b/src/ug/paraCommMpi.h
+index aa3b12e..44390e0 100644
+--- a/src/ug/paraCommMpi.h
++++ b/src/ug/paraCommMpi.h
+@@ -241,7 +241,7 @@ public:
  
     /** For Created Datatypes */
     int ubcast( void* buffer, int count, MPI_Datatype datatype, int root );
 -   int usend( void* bufer, int count, MPI_Datatype datatype, int dest, int tag );
-+   int usend( void* bufer, int count, MPI_Datatype datatype, int dest, int tag, bool block=true );
++    int usend( void* bufer, int count, MPI_Datatype datatype, int dest, int tag, bool block=true );
     int ureceive( void* bufer, int count, MPI_Datatype datatype, int source, int tag );
  
  };
-diff -u -r scipoptsuite-6.0.2/ug/src/ug/paraInitiator.h /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug/paraInitiator.h
---- scipoptsuite-6.0.2/ug/src/ug/paraInitiator.h	2019-07-08 09:34:04.000000000 +0000
-+++ /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug/paraInitiator.h	2020-09-21 21:15:10.000000000 +0000
+diff --git a/src/ug/paraInitiator.h b/src/ug/paraInitiator.h
+index 59f9cdb..3352bd6 100644
+--- a/src/ug/paraInitiator.h
++++ b/src/ug/paraInitiator.h
 @@ -43,6 +43,8 @@
  #include "ugs/ugsParaCommMpi.h"
  #endif
@@ -60,13 +64,16 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug/paraInitiator.h /vagrant/scipoptsuite-6.
  namespace UG
  {
  
-@@ -272,6 +274,17 @@
+@@ -272,6 +274,20 @@ public:
     virtual void writeUgsIncumbentSolution(UGS::UgsParaCommMpi *ugsComm) = 0;
  #endif
  
 +#ifdef UG_WITH_DDBNB
 +   /** start reading DDBNB incumbent solutions from outside **/
 +   virtual void startDDBNBComm() = 0;
++
++   /** stop reading DDBNB incumbent solutions from outside **/
++   virtual void stopDDBNBComm() = 0;
 +
 +   /** write DDBNB incumbent solution **/
 +   virtual void writeDDBNBIncumbentSolution() = 0;
@@ -78,10 +85,11 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug/paraInitiator.h /vagrant/scipoptsuite-6.
  };
  
  typedef ParaInitiator *ParaInitiatorPtr;
-diff -u -r scipoptsuite-6.0.2/ug/src/ug/paraLoadCoordinator.cpp /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug/paraLoadCoordinator.cpp
---- scipoptsuite-6.0.2/ug/src/ug/paraLoadCoordinator.cpp	2019-07-08 09:34:04.000000000 +0000
-+++ /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug/paraLoadCoordinator.cpp	2020-10-11 09:25:34.000000000 +0000
-@@ -524,6 +524,10 @@
+diff --git a/src/ug/paraLoadCoordinator.cpp b/src/ug/paraLoadCoordinator.cpp
+index 65f741d..16db159 100644
+--- a/src/ug/paraLoadCoordinator.cpp
++++ b/src/ug/paraLoadCoordinator.cpp
+@@ -524,6 +524,10 @@ ParaLoadCoordinator::~ParaLoadCoordinator(
  #ifdef UG_WITH_UGS
           if( commUgs ) checkAndReadIncumbent();
  #endif
@@ -92,17 +100,17 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug/paraLoadCoordinator.cpp /vagrant/scipopt
  
           if( nTerminated == paraSolverPool->getNSolvers() ) break;
        }
-@@ -1006,6 +1010,9 @@
+@@ -1005,6 +1009,9 @@ ParaLoadCoordinator::processTagSolution(
+       {
           paraInitiator->writeUgsIncumbentSolution(commUgs);
        }
- #endif
++#endif
 +#ifdef UG_WITH_DDBNB
 +      paraInitiator->writeDDBNBIncumbentSolution();
-+#endif
+ #endif
     }
     else
-    {
-@@ -3020,6 +3027,9 @@
+@@ -3020,6 +3027,9 @@ ParaLoadCoordinator::run(
  #ifdef UG_WITH_UGS
        if( commUgs ) checkAndReadIncumbent();
  #endif
@@ -112,7 +120,7 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug/paraLoadCoordinator.cpp /vagrant/scipopt
  
        /** completion message may delay */
        if( paraRacingSolverPool && paraRacingSolverPool->getNumActiveSolvers() == 0 )
-@@ -3347,6 +3357,9 @@
+@@ -3347,6 +3357,9 @@ ParaLoadCoordinator::restartInRampDownPhase(
  #ifdef UG_WITH_UGS
        if( commUgs ) checkAndReadIncumbent();
  #endif
@@ -122,7 +130,7 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug/paraLoadCoordinator.cpp /vagrant/scipopt
  
        if( paraSolverPool->getNumActiveSolvers() == 0 )
        {
-@@ -4817,6 +4830,9 @@
+@@ -4817,6 +4830,9 @@ ParaLoadCoordinator::run(
  #ifdef UG_WITH_UGS
        if( commUgs ) checkAndReadIncumbent();
  #endif
@@ -132,10 +140,11 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug/paraLoadCoordinator.cpp /vagrant/scipopt
  
        /** output tabular solving status */
        if( outputTabularSolvingStatusFlag && (!racingTermination) &&
-diff -u -r scipoptsuite-6.0.2/ug/src/ug/paraSolution.h /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug/paraSolution.h
---- scipoptsuite-6.0.2/ug/src/ug/paraSolution.h	2019-07-08 09:34:04.000000000 +0000
-+++ /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug/paraSolution.h	2020-10-10 20:26:59.000000000 +0000
-@@ -65,7 +65,7 @@
+diff --git a/src/ug/paraSolution.h b/src/ug/paraSolution.h
+index 7414525..f6138c5 100644
+--- a/src/ug/paraSolution.h
++++ b/src/ug/paraSolution.h
+@@ -65,7 +65,7 @@ public:
     virtual void bcast(ParaComm *comm, int root) = 0;
  
     /** send solution data to the rank */
@@ -144,10 +153,11 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug/paraSolution.h /vagrant/scipoptsuite-6.0
  
     /** receive solution data from the source rank */
     virtual void receive(ParaComm *comm, int source) = 0;
-diff -u -r scipoptsuite-6.0.2/ug/src/ug_scip/parascip.cpp /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug_scip/parascip.cpp
---- scipoptsuite-6.0.2/ug/src/ug_scip/parascip.cpp	2019-07-08 09:34:05.000000000 +0000
-+++ /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug_scip/parascip.cpp	2020-09-21 08:22:12.000000000 +0000
-@@ -278,6 +278,9 @@
+diff --git a/src/ug_scip/parascip.cpp b/src/ug_scip/parascip.cpp
+index e2a690c..5fee038 100644
+--- a/src/ug_scip/parascip.cpp
++++ b/src/ug_scip/parascip.cpp
+@@ -278,6 +278,9 @@ main (
           paraLc = new ParaLoadCoordinator(comm, paraParamSet, paraInitiator, &racingSolversExist, paraTimer, detTimer);
  #endif
        }
@@ -157,23 +167,47 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug_scip/parascip.cpp /vagrant/scipoptsuite-
        if( paraInitiator->isWarmStarted() )
        {
  #ifdef UG_WITH_ZLIB
-diff -u -r scipoptsuite-6.0.2/ug/src/ug_scip/scipParaInitiator.cpp /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug_scip/scipParaInitiator.cpp
---- scipoptsuite-6.0.2/ug/src/ug_scip/scipParaInitiator.cpp	2020-10-12 07:21:16.549115813 +0000
-+++ /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug_scip/scipParaInitiator.cpp	2020-10-10 20:30:05.000000000 +0000
-@@ -38,6 +38,12 @@
+@@ -319,6 +322,9 @@ main (
+             THROW_LOGICAL_ERROR2("Invalid RampUpPhaseProcess: ", paraParamSet->getIntParamValue(RampUpPhaseProcess) )
+          }
+       }
++#ifdef UG_WITH_DDBNB
++      paraInitiator->stopDDBNBComm();
++#endif
+       delete paraLc;
+       if( paraInitiator ) delete paraInitiator;
+    }
+diff --git a/src/ug_scip/scipParaInitiator.cpp b/src/ug_scip/scipParaInitiator.cpp
+index f363400..983e2e5 100644
+--- a/src/ug_scip/scipParaInitiator.cpp
++++ b/src/ug_scip/scipParaInitiator.cpp
+@@ -38,6 +38,11 @@
  #include "scip/debug.h"
  #endif
  
 +#ifdef UG_WITH_DDBNB
 +#include "ug/ErlPortInterface.h"
 +ErlPortInterface g_portInterface;
-+class ParaSCIPBestValueAcceptor;
 +#endif
 +
  // #define UG_SCIP_SOL_FEASIBILITY_CHECK_IN_LC
  
  using namespace UG;
-@@ -2358,3 +2364,113 @@
+@@ -330,6 +335,13 @@ ScipParaInitiator::init(
+       {
+          i++;
+       }
++#endif
++#ifdef UG_WITH_DDBNB
++      else if( strcmp(argv[i], "-ddbnb") == 0 )
++      {
++         i++;
++         ddbnbEnabled = true;
++      }
+ #endif
+       else
+       {
+@@ -2358,3 +2370,123 @@ ScipParaInitiator::writeUgsIncumbentSolution(
     return;
  }
  #endif
@@ -241,8 +275,17 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug_scip/scipParaInitiator.cpp /vagrant/scip
 +
 +void ScipParaInitiator::startDDBNBComm()
 +{
-+    acceptor = new ParaSCIPBestValueAcceptor(paraComm, scip);
-+    g_portInterface.initialize(true);
++    g_portInterface.initialize(ddbnbEnabled);
++}
++
++void ScipParaInitiator::stopDDBNBComm()
++{
++    if (solution && seqNumber) {
++        g_portInterface.writeResult("optimal", convertToExternalValue(
++                solution->getObjectiveFuntionValue()));
++    } else {
++        g_portInterface.writeResult("infeasible", 1e23);
++    }
 +}
 +
 +void ScipParaInitiator::writeDDBNBIncumbentSolution()
@@ -283,22 +326,16 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug_scip/scipParaInitiator.cpp /vagrant/scip
 +
 +void ScipParaInitiator::checkAndReadDDBNBIncumbentSolution()
 +{
-+    g_portInterface.getBestValue(*acceptor);
++    ParaSCIPBestValueAcceptor acceptor(paraComm, scip);
++    g_portInterface.getBestValue(acceptor);
 +}
 +
 +#endif
-diff -u -r scipoptsuite-6.0.2/ug/src/ug_scip/scipParaInitiator.h /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug_scip/scipParaInitiator.h
---- scipoptsuite-6.0.2/ug/src/ug_scip/scipParaInitiator.h	2019-07-08 09:34:04.000000000 +0000
-+++ /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug_scip/scipParaInitiator.h	2020-09-21 21:14:42.000000000 +0000
-@@ -43,12 +43,15 @@
- #include "ugs/ugsParaCommMpi.h"
- #endif
- 
-+class ParaSCIPBestValueAcceptor;
-+
- namespace ParaSCIP
- {
- 
+diff --git a/src/ug_scip/scipParaInitiator.h b/src/ug_scip/scipParaInitiator.h
+index 529cc1f..08c419a 100644
+--- a/src/ug_scip/scipParaInitiator.h
++++ b/src/ug_scip/scipParaInitiator.h
+@@ -49,6 +49,7 @@ namespace ParaSCIP
  /** Initiator class */
  class ScipParaInitiator : public UG::ParaInitiator
  {
@@ -306,44 +343,37 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug_scip/scipParaInitiator.h /vagrant/scipop
     UG::ParaParamSet     *paraParams;
     ScipParaInstance     *instance;
     ScipParaSolution     *solution;
-@@ -78,6 +81,10 @@
+@@ -78,6 +79,10 @@ class ScipParaInitiator : public UG::ParaInitiator
  #ifdef UG_WITH_UGS
     int                  seqNumber;
  #endif
 +#ifdef UG_WITH_DDBNB
 +   int                  seqNumber;
-+   ParaSCIPBestValueAcceptor *acceptor;
++   bool ddbnbEnabled;
 +#endif
  
     bool addRootNodeCuts();
     void outputProblemInfo(int *nNonLinearConsHdlrs);
-@@ -96,6 +103,9 @@
+@@ -95,6 +100,9 @@ public:
+             absgap(-1.0), gap(-1.0), objlimit(DBL_MAX)
  #ifdef UG_WITH_UGS
              , seqNumber(0)
- #endif
-+#ifdef UG_WITH_DDBNB
-+            , seqNumber(0), acceptor(0)
 +#endif
++#ifdef UG_WITH_DDBNB
++            , seqNumber(0), ddbnbEnabled(false)
+ #endif
     {
     }
- 
-@@ -103,6 +113,9 @@
-    ~ScipParaInitiator(
-          )
-    {
-+#ifdef UG_WITH_DDBNB
-+       //delete acceptor;
-+#endif
-       if( instance ) delete instance;
-       if( solution ) delete solution;
-       if( scipDiffParamSetRoot ) delete scipDiffParamSetRoot;
-@@ -321,6 +334,17 @@
+@@ -321,6 +329,20 @@ public:
     void writeUgsIncumbentSolution(UGS::UgsParaCommMpi *ugsComm);
  #endif
  
 +#ifdef UG_WITH_DDBNB
 +   /** start reading DDBNB incumbent solutions from outside **/
 +   virtual void startDDBNBComm();
++
++   /** stop reading/writing DDBNB incumbent solutions **/
++   virtual void stopDDBNBComm();
 +
 +   /** write DDBNB incumbent solution **/
 +   virtual void writeDDBNBIncumbentSolution();
@@ -355,10 +385,11 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug_scip/scipParaInitiator.h /vagrant/scipop
  };
  
  typedef ScipParaInitiator *ScipParaInitiatorPtr;
-diff -u -r scipoptsuite-6.0.2/ug/src/ug_scip/scipParaSolution.h /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug_scip/scipParaSolution.h
---- scipoptsuite-6.0.2/ug/src/ug_scip/scipParaSolution.h	2019-07-08 09:34:05.000000000 +0000
-+++ /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug_scip/scipParaSolution.h	2020-09-21 08:22:12.000000000 +0000
-@@ -83,7 +83,7 @@
+diff --git a/src/ug_scip/scipParaSolution.h b/src/ug_scip/scipParaSolution.h
+index b30a858..67cc9b9 100644
+--- a/src/ug_scip/scipParaSolution.h
++++ b/src/ug_scip/scipParaSolution.h
+@@ -83,7 +83,7 @@ public:
              // std::cout << "*** index: name: value ***" << std::endl;
              for(int i = 0; i < nVars; i++ )
              {
@@ -367,10 +398,11 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug_scip/scipParaSolution.h /vagrant/scipopt
                 values[i] = vals[i];
                 // std::cout << i << ": " << SCIPvarGetName(vars[indicesAmongSolvers[i]]) << ": " << values[i] << std::endl;
                 // std::cout << i << ": " << SCIPvarGetName(vars[i]) << ": " << values[i] << std::endl;
-diff -u -r scipoptsuite-6.0.2/ug/src/ug_scip/scipParaSolutionMpi.cpp /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug_scip/scipParaSolutionMpi.cpp
---- scipoptsuite-6.0.2/ug/src/ug_scip/scipParaSolutionMpi.cpp	2019-07-08 09:34:05.000000000 +0000
-+++ /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug_scip/scipParaSolutionMpi.cpp	2020-10-10 20:21:35.000000000 +0000
-@@ -164,7 +164,7 @@
+diff --git a/src/ug_scip/scipParaSolutionMpi.cpp b/src/ug_scip/scipParaSolutionMpi.cpp
+index 92baa00..a00229e 100644
+--- a/src/ug_scip/scipParaSolutionMpi.cpp
++++ b/src/ug_scip/scipParaSolutionMpi.cpp
+@@ -164,7 +164,7 @@ ScipParaSolutionMpi::bcast(ParaComm *comm, int root)
  
  /** send solution data to the rank */
  void
@@ -379,28 +411,29 @@ diff -u -r scipoptsuite-6.0.2/ug/src/ug_scip/scipParaSolutionMpi.cpp /vagrant/sc
  {
     DEF_PARA_COMM( commMpi, comm);
     MPI_Datatype preDatatype;
-@@ -173,7 +173,7 @@
+@@ -173,7 +173,7 @@ ScipParaSolutionMpi::send(ParaComm *comm, int destination)
        MPI_Type_commit( &preDatatype )
     );
     PARA_COMM_CALL(
 -      commMpi->usend(&objectiveFunctionValue, 1, preDatatype, destination, TagSolution)
-+      commMpi->usend(&objectiveFunctionValue, 1, preDatatype, destination, TagSolution, block)
++       commMpi->usend(&objectiveFunctionValue, 1, preDatatype, destination, TagSolution, block)
     );
     MPI_CALL(
        MPI_Type_free( &preDatatype )
-@@ -186,7 +186,7 @@
+@@ -186,7 +186,7 @@ ScipParaSolutionMpi::send(ParaComm *comm, int destination)
           MPI_Type_commit( &datatype )
        );
        PARA_COMM_CALL(
 -            commMpi->usend(indicesAmongSolvers, 1, datatype, destination, TagSolution1)
-+            commMpi->usend(indicesAmongSolvers, 1, datatype, destination, TagSolution1, block)
++          commMpi->usend(indicesAmongSolvers, 1, datatype, destination, TagSolution1, block)
        );
        MPI_CALL(
           MPI_Type_free( &datatype )
-diff -u -r scipoptsuite-6.0.2/ug/src/ug_scip/scipParaSolutionMpi.h /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug_scip/scipParaSolutionMpi.h
---- scipoptsuite-6.0.2/ug/src/ug_scip/scipParaSolutionMpi.h	2019-07-08 09:34:05.000000000 +0000
-+++ /vagrant/scipoptsuite-6.0.2-ddbnb/ug/src/ug_scip/scipParaSolutionMpi.h	2020-10-10 20:27:54.000000000 +0000
-@@ -82,7 +82,7 @@
+diff --git a/src/ug_scip/scipParaSolutionMpi.h b/src/ug_scip/scipParaSolutionMpi.h
+index d3f80a1..e6cc83d 100644
+--- a/src/ug_scip/scipParaSolutionMpi.h
++++ b/src/ug_scip/scipParaSolutionMpi.h
+@@ -82,7 +82,7 @@ public:
     void bcast(UG::ParaComm *comm, int root);
  
     /** send solution data to the rank */

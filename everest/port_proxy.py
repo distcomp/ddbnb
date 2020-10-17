@@ -73,7 +73,7 @@ def readFromSolver((solver2proxyRead, _, cpid)):
 
 def main():
     fork = os.environ.get("OMPI_COMM_WORLD_RANK", "0") == "0"
-    solver = startSolver(['./bin/parascip', 'parascip.set', '../../BalanceTestDyn_000.cip', '-q'],
+    solver = startSolver(['./bin/parascip', 'parascip.set', '../../BalanceTestDyn_000.cip', '-q', '-ddbnb'],
                          fork)
                           #'bin/cbc_port', '../test/BalanceTestDyn.nl',
                           #'-p'])#, '-q', '-o', 'test.log'])
