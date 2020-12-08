@@ -102,7 +102,7 @@ class Task:
         vals = self.requestAndWaitVars()
 
         stopped = vals[self.stoppedVar] != 'NULL'
-        if self.stopMode and stopped:
+        if self.stopMode == 1 and stopped:
             self.sock.shutdown(socket.SHUT_WR)
             os.mknod(os.path.splitext(stub)[0] + '.sol')
             return
@@ -132,7 +132,7 @@ class Task:
                     seqNumber = solverMsg[2]
                     with open('outsol-%d.sol' % seqNumber, 'rb') as f:
                         solution = f.read()
-                    solution = removeZeros(solution)
+                    #solution = removeZeros(solution)
                     with open(os.path.splitext(stub)[0] + '.sol', 'wb') as f:
                         f.write(solution)
                     print "Found new record: %f seq: %d size: %d" % (
@@ -142,12 +142,16 @@ class Task:
                 else:
                     print "Found new record: %f" % solverMsg[1]
                     msg = "VAR_SET_MD record %f" % solverMsg[1]
-                self.send_message(msg)
+                if self.stopMode != 9:
+                    self.send_message(msg)
                 if solverMsg[0] == 'result':
-                    with open(os.path.splitext(stub)[0] + '.sol', 'r') as f:
-                        firstLine = f.readline()
-                    sys.stderr.write(">>> solutionHeader: %s\n" % firstLine)
-                if self.stopMode and solverMsg[0] == 'result':
+                    try:
+                        with open(os.path.splitext(stub)[0] + '.sol', 'r') as f:
+                            firstLine = f.readline()
+                        sys.stderr.write(">>> solutionHeader: %s\n" % firstLine)
+                    except IOError:
+                        sys.stderr.write(">>> solutionHeader: ok\n")
+                if self.stopMode == 1 and solverMsg[0] == 'result':
                     print 'Got result, stopping other solvers...'
                     self.send_message('VAR_SET_MD %s 1' % self.stoppedVar)
             elif solverMsg[0] == 'closed':
@@ -157,8 +161,6 @@ class Task:
                 if self.sock:
                     self.sock.shutdown(socket.SHUT_WR)
                     receiver.join()
-                if solverMsg[1] == 0 and 'parascip' in sys.argv[1]:
-                    sys.stderr.write(">>> solutionHeader: ok\n")
                 sys.stderr.write(">>> solver_exitcode: %s\n" % solverMsg[1])
                 print 'Finished', solverMsg
                 return solverMsg[1]
@@ -209,14 +211,14 @@ class Task:
                         port_proxy.sendIncumbent(self.solver, record, seqNumber)
                         print "Updated record: %f, seq %d, size %d, comp-size %d" % (
                             record, seqNumber, len(solution), len(spl[1]))
-                elif self.stopMode and msg.startswith('VAR_VALUE %s' % self.stoppedVar):
+                elif self.stopMode == 1 and msg.startswith('VAR_VALUE %s' % self.stoppedVar):
                     assert(msg.split()[2] == '1')
                     killing = True
                     nextKill = time.time() + killDelay
                     print "Got stop message. Stopping solver..."
                     port_proxy.stopSolver(self.solver)
                     print "Sent SIGINT to solver"
-                elif self.stopMode and msg.startswith('VAR_VALUE') and 'stopped' in msg:
+                elif self.stopMode == 1 and msg.startswith('VAR_VALUE') and 'stopped' in msg:
                     print 'Got stopped message for other stub:', msg
                 else:
                     assert False, 'Unknown message: %s' % msg

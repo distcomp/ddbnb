@@ -30,9 +30,13 @@ def makeParser():
     parser.add_argument('-pf', '--parameters-file', action='append', default=[],
                         help='files with solver parameters. Overrides -p params')
     parser.add_argument('-l', '--get-log', action='store_true',
-                        help='download job log')
-    parser.add_argument('-ss', '--save-status', action='store_true',
+                        help='download job log', dest='get_log')
+    parser.add_argument('-nl', '--no-get-log', action='store_false',
+                        help='do not download job log', dest='get_log')
+    parser.add_argument('-ss', '--save-status', action='store_true', dest='save_status',
                         help='save solution status and objective value')
+    parser.add_argument('-nss', '--no-save-status', action='store_false', dest='save_status',
+                        help='do not save solution status and objective value')
     parser.add_argument('-sm', '--stop-mode', type=int, default='0',
                         help='0 - run until all tasks finish, 1 - run until any task finish, return best solution as result')
     parser.add_argument('-ii', '--initial-incumbent', type=float, default='1e23',
@@ -43,6 +47,7 @@ def makeParser():
     parser.add_argument('-ur', '--use-results', help='Skip parameter sweep run by using already computed results')
     parser.add_argument('--job', help='Skip parameter sweep run by downloading results from a completed job')
     parser.add_argument('file', nargs='*', default=[], help='input stub files')
+    parser.set_defaults(get_log=True, save_status=True)
     return parser
 
 def main0():
@@ -246,6 +251,10 @@ def parseFile(fileName):
                     mm = re.search('esource ([a-z0-9]+),', l)
                     if mm and not 'resourceId' in result['tasks'][m.group(1)]:
                         result['tasks'][m.group(1)]['resourceId'] = mm.group(1)
+            elif 'Received' in l and 'TASK_MESSAGE' in l and 'VAR_GET record' in l:
+                start = string.find(l, '["T')
+                msg = json.loads(l[start:])
+                result['tasks'][msg[1]]['start'] = timestamp
     return result
 
 def saveResults(jobResults, stubNames, paramNames, stubExt, args):
